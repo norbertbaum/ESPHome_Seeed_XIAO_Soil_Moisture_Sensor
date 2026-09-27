@@ -1,3 +1,4 @@
-# ESPHome version used for CI and local builds. Keep in sync with the
-# ESPHome Device Builder add-on in Home Assistant (see CLAUDE.md).
+# Pinned ESPHome version for reproducible builds. Dependabot bumps it with a
+# PR on every new release; CI also builds against the newest release. Keep
+# esphome: min_version in the base package equal to this (see CLAUDE.md).
 esphome==2026.9.0

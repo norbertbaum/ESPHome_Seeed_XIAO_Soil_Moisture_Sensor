@@ -5,37 +5,51 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  # Weekly run against the newest ESPHome release, so upstream breakage shows
+  # up even when nothing in this repo changes.
+  schedule:
+    - cron: "17 4 * * 1"
 
 jobs:
   labels:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
       - run: pip install pyyaml
       - run: python tests/check_labels.py
 
   build:
-    name: build (${{ matrix.lang }})
+    name: build (${{ matrix.lang }}, ${{ matrix.esphome }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         lang: [en, de]
+        # pinned = requirements.txt (reproducible, bumped by Dependabot)
+        # latest = newest ESPHome on PyPI (early warning)
+        esphome: [pinned, latest]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.13"
           cache: pip
       - name: Cache PlatformIO toolchains
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.platformio
-          key: pio-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
-      - run: pip install -r requirements.txt
+          key: pio-${{ runner.os }}-${{ matrix.esphome }}-${{ hashFiles('requirements.txt') }}
+          restore-keys: pio-${{ runner.os }}-
+      - name: Install ESPHome (pinned)
+        if: matrix.esphome == 'pinned'
+        run: pip install -r requirements.txt
+      - name: Install ESPHome (latest)
+        if: matrix.esphome == 'latest'
+        run: pip install --upgrade esphome
+      - run: esphome version
       - name: Validate
         run: esphome config tests/soil-test-${{ matrix.lang }}.yaml
       - name: Compile

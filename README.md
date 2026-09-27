@@ -290,16 +290,21 @@ CLAUDE.md                              design decisions and maintenance notes
 ## Development
 
 ```bash
-pip install -r requirements.txt
+pip install -U esphome      # always develop against the newest ESPHome release
 python tests/check_labels.py
 esphome config tests/soil-test-en.yaml
 esphome compile tests/soil-test-en.yaml
 ```
 
 CI runs the same steps for both languages on every push and pull request.
+Each language is built twice: with the ESPHome version pinned in
+`requirements.txt` and with the newest release from PyPI. A weekly scheduled
+run catches breaking ESPHome releases. Dependabot raises the pin with a pull
+request whenever a new ESPHome version appears.
 
 On **Windows**, ESP-IDF build paths can exceed the 250-character limit when the checkout is deep.
-Point the build directory to a short path:
+Point the build directory to a short path, and compile from PowerShell or cmd, not from Git Bash.
+ESPHome's ESP-IDF installer refuses to run under MSYS/MinGW:
 
 ```powershell
 $env:ESPHOME_DATA_DIR = "C:\Daten\.esph"
