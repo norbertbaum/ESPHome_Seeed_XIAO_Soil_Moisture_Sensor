@@ -345,3 +345,7 @@ Based on the ESPHome example from the
 It was reworked substantially: analog frontend init, working LEDs and button,
 USB detection, self-learning calibration, bounded wake windows. The reasons are in
 [CLAUDE.md](CLAUDE.md#history-bugs-fixed-in-the-seeed-original).
+
+## License
+
+[MIT](LICENSE)
