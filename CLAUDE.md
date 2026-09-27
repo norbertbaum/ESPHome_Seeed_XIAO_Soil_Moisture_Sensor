@@ -38,6 +38,10 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
   `documentation`, `question`.
 - Work on branches (`feature/…`, `fix/…`, `docs/…`) and open pull requests.
   Do not push to `main` directly.
+- **Clean up after every merge** (issue #17): delete the branch on GitHub and
+  locally, then `git fetch --prune` and `git worktree prune`. First check with
+  `git merge-base --is-ancestor <branch> main` that it really is merged, and
+  never delete unmerged work without asking.
 - Code comments, commit messages, PRs and docs are in **English**. Only the
   issues and the German label file are German.
 - Commit messages: imperative summary line, body explains why.
