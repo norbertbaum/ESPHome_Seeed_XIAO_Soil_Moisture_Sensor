@@ -30,7 +30,10 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
 ## Working conventions
 
 - **Every piece of work gets a GitHub issue first, written in German** (the
-  owner reads them). This includes bugs found on the way and follow-ups. PRs
+  owner reads them). This includes bugs found on the way and follow-ups.
+  **Only general project work** belongs in issues. Anything specific to one
+  installation (migrating or flashing particular devices, their secrets or
+  helpers) does not. PRs
   reference their issue (`Closes #N`). Issue labels: `bug`, `enhancement`,
   `documentation`, `question`.
 - Work on branches (`feature/…`, `fix/…`, `docs/…`) and open pull requests.
@@ -38,9 +41,41 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
 - Code comments, commit messages, PRs and docs are in **English**. Only the
   issues and the German label file are German.
 - Commit messages: imperative summary line, body explains why.
-- When behaviour or a default changes, update the README tables, this file, and
-  `project.version` in the base package in the same PR. Release with a
-  tag `vX.Y.Z` so devices can pin `ref:`.
+- When behaviour or a default changes, update the README tables and this
+  file in the same PR. Do **not** hand-edit versions or create tags: releases
+  are automatic (see "Releases").
+
+## Releases (GitVersion)
+
+- `GitVersion.yml` (GitVersion 6, GitHubFlow) computes the version from the
+  tags on `main`. `.github/workflows/release.yaml` runs after CI **passed for a
+  push to main** (`workflow_run`, the weekly schedule run is ignored) and
+  creates tag `vX.Y.Z` plus a GitHub release with generated notes
+  (`gh release create --generate-notes`).
+- Bumps: a merge to main = **patch** by default. In a commit message of the PR,
+  `+semver: minor` = new feature or substitution (device files keep working),
+  `+semver: major` = breaking (device files must change, and the release notes must say how),
+  `+semver: none` = no bump. Choose the bump when writing the commit, and
+  mention it in the PR description.
+- No release when nothing below `esphome/` changed since the last tag (docs,
+  CI, tests). Those commits ship with the next firmware release, and their
+  `+semver` markers still count.
+- On pull requests the same workflow runs as a **dry run**. Its job summary shows
+  "Merging this PR releases vX.Y.Z". Check it before merging.
+- **Version in the firmware:** the device file sets
+  `firmware_version: vX.Y.Z` and uses it as the package `ref:`. The base package
+  puts it into `esphome: project: version`, so HA shows the release that really
+  runs. The default `dev` means a local include or an unset value. The version is
+  therefore never committed into the YAML. A commit-back from CI would conflict with
+  "never push to main", and GitVersion only sees tags that are ancestors of `main`.
+  ESPHome substitutes remote package `url`/`ref` with the device's
+  substitutions (`_substitute_package_definition` in
+  `esphome/components/packages/__init__.py`), which is what makes this work.
+- `v1.0.0` was tagged by hand (annotated, on the merge of PR #1). Every later
+  release comes from the workflow. GitVersion is pinned to `6.8.x` in the
+  workflow. Dependabot does not bump it, so check it occasionally.
+- A local GitVersion run is not possible on the owner's machine: NuGet package
+  source mapping blocks `GitVersion.Tool`. Do not bypass it. Rely on the PR dry run.
 
 ## ESPHome version policy: always the newest
 

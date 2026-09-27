@@ -15,6 +15,11 @@
 # =============================================================================
 
 substitutions:
+  # Release to run: a tag from the Releases page (recommended), or "main" for
+  # the latest development state. Used as the package ref below AND shown as
+  # the firmware version in Home Assistant.
+  firmware_version: v1.0.0
+
   # Hostname: lowercase, digits and "-" only, unique per device.
   name: soil-moisture-1
   # Shown in Home Assistant; entity names are prefixed with it.
@@ -38,9 +43,7 @@ substitutions:
 packages:
   soil_moisture:
     url: https://github.com/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor
-    # Pin a release tag (e.g. v1.0.0) so a new commit does not silently change
-    # all sensors. "main" always follows the latest version.
-    ref: main
+    ref: ${firmware_version}
     refresh: 1d
     files:
       # Pick exactly ONE language:

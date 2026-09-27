@@ -52,6 +52,7 @@ Create a new device, then replace its YAML with
 
 ```yaml
 substitutions:
+  firmware_version: v1.0.0   # release tag, see "Updating all sensors"
   name: soil-moisture-1
   friendly_name: Soil Moisture 1
   stay_awake_entity: input_boolean.soil_moisture_1_stay_awake
@@ -62,7 +63,7 @@ substitutions:
 packages:
   soil_moisture:
     url: https://github.com/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor
-    ref: main          # or a release tag, e.g. v1.0.0
+    ref: ${firmware_version}
     refresh: 1d
     files:
       - esphome/labels/.soil-moisture-labels-en.yaml   # or -de.yaml
@@ -82,11 +83,22 @@ so the device can reset its stay-awake helper by itself.
 
 ### Updating all sensors
 
-- `ref: main`: *Update All* in the Device Builder rebuilds every sensor with
-  the latest code. `refresh: 1d` means the Device Builder checks GitHub at most once a day.
+`firmware_version` selects the release, and it has two effects: it is the
+package `ref:`, and Home Assistant shows it as the device's firmware version.
+
+- `firmware_version: v1.2.3`: sensors stay on that
+  [release](https://github.com/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor/releases)
+  until you change the tag. This is the recommended way to run several
+  sensors. Nothing changes by accident. To update, change the tag, then
+  *Install* in the Device Builder.
+- `firmware_version: main`: *Update All* rebuilds every sensor with the latest
+  development state. `refresh: 1d` means the Device Builder checks GitHub at most once a day.
   To pick up a change right away, use *Clean Build Files* or set `refresh: 0s` temporarily.
-- `ref: v1.2.3`: sensors stay on that release until you change the tag.
-  This is the recommended way to run several sensors. Nothing changes by accident.
+
+Releases follow [semantic versioning](https://semver.org): a **patch** release
+contains fixes, a **minor** release adds features or substitutions and needs no
+change to device files, and a **major** release requires changes to the device file.
+Read the release notes before changing the major version.
 
 Battery sensors are asleep most of the time. Plan the OTA with the
 [wake window](#requesting-a-wake-window-the-mailbox).
@@ -97,6 +109,7 @@ Battery sensors are asleep most of the time. Plan the OTA with the
 
 | Substitution | Example | Meaning |
 |---|---|---|
+| `firmware_version` | `v1.0.0` | Release tag (or `main`), used as package `ref:` and shown in HA |
 | `name` | `soil-moisture-1` | Hostname, unique, `a-z 0-9 -` |
 | `friendly_name` | `Soil Moisture 1` | Device name in Home Assistant |
 | `stay_awake_entity` | `input_boolean.soil_moisture_1_stay_awake` | Wake-window helper, **one per device** |
@@ -284,6 +297,7 @@ tests/
   secrets.yaml                         dummy secrets for those configs
   check_labels.py                      label consistency check
 requirements.txt                       pinned ESPHome version
+GitVersion.yml                         release versioning (see Releases)
 CLAUDE.md                              design decisions and maintenance notes
 ```
 
@@ -312,6 +326,17 @@ esphome compile tests/soil-test-en.yaml
 ```
 
 The test configs contain dummy credentials. Do not flash them to a real device.
+
+### Releases
+
+Releases are fully automatic. Once CI has passed on `main`,
+[GitVersion](https://gitversion.net) computes the next version and the
+*Release* workflow creates the tag `vX.Y.Z` and a GitHub release with
+generated notes. A merge bumps the patch version by default. Add
+`+semver: minor`, `+semver: major` or `+semver: none` to a commit message to
+change that. Merges that do not touch `esphome/` (docs, CI) do not create a release.
+The workflow also runs on every pull request and shows in its summary which
+version merging the PR would release.
 
 ## Credits
 

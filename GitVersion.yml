@@ -1,0 +1,15 @@
+# GitVersion 6: computes the next release version from the git history.
+#
+# - Every release is a tag vX.Y.Z on main (created by .github/workflows/release.yaml).
+# - A merge to main bumps the PATCH version by default.
+# - Put one of these into a commit message of the PR to bump differently:
+#     +semver: minor    (new feature / new substitution, backwards compatible)
+#     +semver: major    (breaking: device files must be changed)
+#     +semver: none     (no version bump)
+# See CLAUDE.md, section "Releases".
+workflow: GitHubFlow/v1
+tag-prefix: '[vV]?'
+commit-message-incrementing: Enabled
+branches:
+  main:
+    increment: Patch

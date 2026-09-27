@@ -1,0 +1,84 @@
+name: Release
+
+# Releases are created automatically with GitVersion (see GitVersion.yml):
+# - after CI succeeded for a push to main: tag vX.Y.Z + GitHub release
+# - on pull requests: dry run, the job summary shows the version a merge
+#   would release
+# No release is created when nothing below esphome/ changed since the last
+# tag (docs-only or CI-only merges). Those changes ship with the next
+# firmware release.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event_name }}-${{ github.event.pull_request.number || 'main' }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    # Only CI runs triggered by a push (not the weekly schedule), and only if CI passed.
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      # workflow_run checks out a detached commit. Put it on a local "main"
+      # so GitVersion applies the main branch configuration.
+      - name: Attach HEAD to main
+        if: github.event_name == 'workflow_run'
+        run: git checkout -B main
+
+      - uses: gittools/actions/gitversion/setup@v4
+        with:
+          versionSpec: "6.8.x"
+
+      - id: gitversion
+        uses: gittools/actions/gitversion/execute@v4
+
+      - name: Decide
+        id: decide
+        env:
+          VERSION: v${{ steps.gitversion.outputs.majorMinorPatch }}
+        run: |
+          last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || true)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
+            reason="tag $VERSION already exists"
+          elif [ -n "$last" ] && git diff --quiet "$last" HEAD -- esphome/; then
+            reason="no change below esphome/ since $last"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+          if [ -n "${reason:-}" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            msg="No release: $reason."
+          elif [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            msg="Merging this PR releases **$VERSION** (previous: ${last:-none})."
+          else
+            msg="Releasing **$VERSION** (previous: ${last:-none})."
+          fi
+          echo "$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create release
+        if: github.event_name == 'workflow_run' && steps.decide.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.decide.outputs.version }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          gh release create "$VERSION" --target "$SHA" --title "$VERSION" --generate-notes

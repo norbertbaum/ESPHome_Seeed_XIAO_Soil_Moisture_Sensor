@@ -9,6 +9,7 @@ substitutions:
   ap_password: !secret test_ap_password
   threshold_dry: "30"
   sleep_wet_min: "240"
+  firmware_version: ci-test
 
 packages:
   labels: !include ../esphome/labels/.soil-moisture-labels-de.yaml

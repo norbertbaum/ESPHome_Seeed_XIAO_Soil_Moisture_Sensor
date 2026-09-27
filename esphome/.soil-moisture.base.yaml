@@ -14,6 +14,12 @@
 # =============================================================================
 
 substitutions:
+  # ---- Firmware version -----------------------------------------------------
+  # Shown as the project version in Home Assistant. The device file sets it
+  # to the release tag it pulls (ref: ${firmware_version}), so HA shows what
+  # really runs. "dev" = local include / not set.
+  firmware_version: dev
+
   # ---- Auto-calibration tuning (defaults, override per device) --------------
   # Lower sanity limit. Reliably catches "analog frontend off" (measured:
   # 0.002 V). Do not raise it more than needed -- how far the voltage drops in
@@ -59,7 +65,7 @@ esphome:
   min_version: 2026.9.0
   project:
     name: norbertbaum.xiao-soil-moisture
-    version: "1.0.0"
+    version: "${firmware_version}"
 
   # System headers for the USB host detection and the reset reason. Angle
   # bracket includes need no local file, so this also works when the package
