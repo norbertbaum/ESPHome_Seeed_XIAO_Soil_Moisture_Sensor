@@ -1,5 +1,9 @@
 # ESPHome firmware for the Seeed XIAO Soil Moisture Sensor (ESP32-C6)
 
+[![Latest release](https://img.shields.io/github/v/release/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor?label=latest%20release)](https://github.com/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor/releases/latest)
+[![CI](https://github.com/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor/actions/workflows/ci.yaml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+
 Battery-friendly ESPHome firmware for the
 [Seeed Studio XIAO Soil Moisture Sensor](https://wiki.seeedstudio.com/xiao_soil_moisture_sensor/),
 shipped as a **shared package**: every sensor runs exactly the same code, and
@@ -48,11 +52,13 @@ One `soil_N_*` set per sensor.
 ### 3. ESPHome Device Builder: device file
 
 Create a new device, then replace its YAML with
-[`esphome/example.yaml`](esphome/example.yaml) and adapt the substitutions:
+[`esphome/example.yaml`](esphome/example.yaml) and adapt the substitutions.
+Replace `vX.Y.Z` with the **latest release** (badge at the top, or the
+[Releases page](https://github.com/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor/releases/latest)):
 
 ```yaml
 substitutions:
-  firmware_version: v1.0.0   # release tag, see "Updating all sensors"
+  firmware_version: vX.Y.Z   # latest release, see "Updating all sensors"
   name: soil-moisture-1
   friendly_name: Soil Moisture 1
   stay_awake_entity: input_boolean.soil_moisture_1_stay_awake
@@ -69,6 +75,9 @@ packages:
       - esphome/labels/.soil-moisture-labels-en.yaml   # or -de.yaml
       - esphome/.soil-moisture.base.yaml
 ```
+
+> `couldn't find remote ref vX.Y.Z` when validating means the placeholder
+> is still there. Set `firmware_version` to a real release tag.
 
 ### 4. Flash
 
@@ -109,7 +118,7 @@ Battery sensors are asleep most of the time. Plan the OTA with the
 
 | Substitution | Example | Meaning |
 |---|---|---|
-| `firmware_version` | `v1.0.0` | Release tag (or `main`), used as package `ref:` and shown in HA |
+| `firmware_version` | `v1.1.0` | Release tag (or `main`), used as package `ref:` and shown in HA |
 | `name` | `soil-moisture-1` | Hostname, unique, `a-z 0-9 -` |
 | `friendly_name` | `Soil Moisture 1` | Device name in Home Assistant |
 | `stay_awake_entity` | `input_boolean.soil_moisture_1_stay_awake` | Wake-window helper, **one per device** |
@@ -334,7 +343,8 @@ Releases are fully automatic. Once CI has passed on `main`,
 *Release* workflow creates the tag `vX.Y.Z` and a GitHub release with
 generated notes. A merge bumps the patch version by default. Add
 `+semver: minor`, `+semver: major` or `+semver: none` to a commit message to
-change that. Merges that do not touch `esphome/` (docs, CI) do not create a release.
+change that. Only changes to the firmware itself (`esphome/.soil-moisture.base.yaml`,
+`esphome/labels/`) create a release. Docs, CI, tests and `example.yaml` do not.
 The workflow also runs on every pull request and shows in its summary which
 version merging the PR would release.
 
