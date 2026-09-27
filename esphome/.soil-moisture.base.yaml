@@ -5,7 +5,7 @@
 # comes in through substitutions from the device file (see example.yaml):
 #
 #   required:  name, friendly_name, stay_awake_entity,
-#              api_encryption_key, ota_password, ap_password
+#              api_encryption_key, ap_password
 #   labels:    one of labels/.soil-moisture-labels-{de,en}.yaml
 #   optional:  the tuning defaults in the substitutions block below
 #
@@ -92,6 +92,11 @@ esp32:
 
 web_server:
   port: 80
+  # MUST stay false: otherwise web_server adds "ota: platform: web_server",
+  # an unauthenticated plaintext /update endpoint that lets anyone on the
+  # Wi-Fi flash arbitrary firmware -- regardless of the encrypted esphome OTA
+  # below (issue #20).
+  ota: false
 
 logger:
 
@@ -99,9 +104,14 @@ api:
   encryption:
     key: ${api_encryption_key}
 
+# OTA uploads are encrypted and authenticated with the API key (ESPHome
+# >= 2026.9); no separate OTA password. The uploader refuses a plaintext
+# upload, so a device whose running firmware was built with ESPHome < 2026.9
+# must first be updated to a build that offers encryption (e.g. v1.1.0), see
+# CLAUDE.md "OTA encryption".
 ota:
   - platform: esphome
-    password: ${ota_password}
+    encryption: {}
 
 wifi:
   ssid: !secret wifi_ssid
@@ -112,7 +122,11 @@ wifi:
     ssid: ${name}
     password: ${ap_password}
 
-captive_portal:
+# Deliberately NO captive_portal: it auto-loads "ota: platform: web_server"
+# (plaintext /update while the fallback hotspot is up) and is of no use on a
+# deep-sleep device -- measure_and_sleep gives up after 60 s without Wi-Fi,
+# about when the hotspot would appear. The fallback AP itself stays: on USB
+# power (no sleep) it still allows an encrypted OTA via 192.168.4.1.
 
 # Wall clock for the time based calibration decay. If not (yet) synced the
 # decay is simply skipped for this measurement.

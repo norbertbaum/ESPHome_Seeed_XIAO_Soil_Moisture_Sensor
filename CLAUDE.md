@@ -19,7 +19,7 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
   hidden `.base.yaml`, `labels/.…-labels-<lang>.yaml`, `example.yaml`.
 - **The repository is public.** No real credentials or IP addresses. The
   base package takes all credentials via substitutions (`api_encryption_key`,
-  `ota_password`, `ap_password`) and `!secret wifi_ssid/wifi_password`.
+  `ap_password`) and `!secret wifi_ssid/wifi_password`.
   `tests/secrets.yaml` holds dummy values and is committed on purpose. The
   `.gitignore` ignores every other `secrets.yaml`. **Never** add an
   `esphome/secrets.yaml`: ESPHome resolves `!secret` relative to the
@@ -142,8 +142,12 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 ## Substitution contract
 
 - **Required** (no default, config fails without them): `name`,
-  `friendly_name`, `stay_awake_entity`, `api_encryption_key`, `ota_password`,
-  `ap_password`, and all `label_*` / `state_*` keys (from the label file).
+  `friendly_name`, `stay_awake_entity`, `api_encryption_key`, `ap_password`,
+  and all `label_*` / `state_*` keys (from the label file).
+- `firmware_version` defaults to `dev`, see "Releases".
+- `ota_password` was removed in the OTA-encryption release. Device files that still
+  set it keep working, because unused substitutions are ignored.
+  `tests/soil-test-de.yaml` keeps it on purpose to prove that.
 - **Optional** tuning defaults are in the `substitutions:` block of the base package.
   Device substitutions override package substitutions.
 - Label values are pasted into C++ string literals. No `"` and no `\`.
@@ -151,6 +155,28 @@ A clean compile takes about 2 minutes. Reference sizes are in the
   has the same keys and that every key is used by the base package.
 - Adding a label: add it to **both** label files and use it as `"${key}"` in
   the base package. The check script fails otherwise.
+
+## OTA encryption and the web_server hole (issues #19, #20)
+
+- `ota: - platform: esphome` uses `encryption: {}`. ESPHome ≥ 2026.9 fills in
+  the api key (`_resolve_encryption_key` in `components/esphome/ota`). The
+  password was dropped: ESPHome warns that it only wastes ~3.5 KB flash and
+  RAM once the api key encrypts, and `password` + `encryption` is rejected.
+- **Migration trap:** with `ota: encryption:` the uploader fails closed
+  (`espota2.py`) against firmware built with ESPHome < 2026.9, which cannot
+  offer encryption. Such devices first need any build from ≥ 2026.9 (v1.1.0
+  qualifies). Without `encryption:` the uploader would try the api key and
+  fall back to plaintext. That fallback is removed in ESPHome 2027.3.0.
+- `web_server:` would add `ota: platform: web_server`, a **plaintext,
+  unauthenticated `/update` endpoint** (it was open in v1.0.0/v1.1.0 and in the
+  original firmware). `web_server: ota: false` disables it.
+- `captive_portal` auto-loads the same `ota.web_server` platform. It serves
+  uploads only while the fallback hotspot is active, but ESPHome then still warns
+  "OTA encryption does not cover the web_server OTA platform". It was removed:
+  on a deep-sleep device it is useless, because `measure_and_sleep` gives up
+  after 60 s without Wi-Fi, which is about when the hotspot appears. The fallback AP stays.
+- Check after changes: `esphome config` prints **no** OTA warning, and the
+  resolved `ota:` list contains only `platform: esphome`.
 
 ## Entity identity: do not rename casually
 

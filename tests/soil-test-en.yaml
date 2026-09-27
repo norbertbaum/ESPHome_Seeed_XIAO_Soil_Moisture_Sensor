@@ -7,7 +7,6 @@ substitutions:
   friendly_name: Soil Test EN
   stay_awake_entity: input_boolean.soil_test_en_stay_awake
   api_encryption_key: !secret test_api_key
-  ota_password: !secret test_ota_password
   ap_password: !secret test_ap_password
 
 packages:

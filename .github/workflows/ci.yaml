@@ -51,6 +51,17 @@ jobs:
         run: pip install --upgrade esphome
       - run: esphome version
       - name: Validate
-        run: esphome config tests/soil-test-${{ matrix.lang }}.yaml
+        run: esphome config tests/soil-test-${{ matrix.lang }}.yaml 2>&1 | tee config.txt
+      # Security guard (issues #19, #20): only the encrypted esphome OTA may
+      # exist -- no plaintext web_server /update endpoint, no OTA warnings.
+      - name: Check OTA security
+        run: |
+          if sed -n '/^ota:/,/^[a-z_]*:$/p' config.txt | grep -q 'platform: web_server'; then
+            echo "::error::ota contains platform web_server (plaintext /update endpoint)"; exit 1
+          fi
+          if grep -E 'WARNING.*(OTA|ota)' config.txt; then
+            echo "::error::OTA related warning in esphome config"; exit 1
+          fi
+          echo "OTA: only the encrypted esphome platform"
       - name: Compile
         run: esphome compile tests/soil-test-${{ matrix.lang }}.yaml
