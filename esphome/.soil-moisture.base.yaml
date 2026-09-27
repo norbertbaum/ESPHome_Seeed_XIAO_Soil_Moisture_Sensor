@@ -195,6 +195,12 @@ globals:
     restore_value: no
     initial_value: "${wake_budget_min}"
 
+  # Soil ADC readings of the current measurement, collected by the repeat
+  # loop in measure_and_sleep and reduced to a median afterwards.
+  - id: soil_samples
+    type: std::vector<float>
+    restore_value: no
+
 sensor:
   - platform: adc
     id: soil_sensor
@@ -529,35 +535,38 @@ script:
 
       - delay: 2s
       - lambda: |-
+          id(battery_sensor).update();
+          id(soil_samples).clear();
+
+      # --- 5 soil readings, 20 ms apart, each averaging 16 hardware samples.
+      #     A YAML loop instead of delay() inside a lambda: the old loop
+      #     blocked for ~100 ms and triggered "took a long time for an
+      #     operation" (issue #11). Same spacing, same values -- but the
+      #     scheduler runs between the readings.
+      - repeat:
+          count: 5
+          then:
+            - lambda: |-
+                id(soil_sensor).update();
+                float v = id(soil_sensor).state;
+                if (!std::isnan(v)) id(soil_samples).push_back(v);
+            - delay: 20ms
+
+      - lambda: |-
           const float V_MIN_PLAUSIBLE = ${v_min_plausible};
           const float V_MAX_PLAUSIBLE = ${v_max_plausible};
           const float MIN_SPAN = ${min_span};
           const float DECAY_FRAC_PER_DAY = ${decay_frac_per_day};
           const float CONFIRM_TOL = ${confirm_tol};
 
-          id(battery_sensor).update();
-
-          // --- Median of 5 readings (each 16 hardware samples averaged).
-          //     Median instead of mean: a single outlier drops out.
-          const int N = 5;
-          float s[N];
-          int n = 0;
-          for (int i = 0; i < N; i++) {
-            id(soil_sensor).update();
-            float v = id(soil_sensor).state;
-            if (!std::isnan(v)) s[n++] = v;
-            delay(20);
-          }
-          if (n == 0) {
+          // --- Median instead of mean: a single outlier drops out.
+          auto &s = id(soil_samples);
+          if (s.empty()) {
             ESP_LOGE("soil", "No valid ADC samples!");
             return;
           }
-          for (int i = 1; i < n; i++) {          // insertion sort
-            float k = s[i]; int j = i - 1;
-            while (j >= 0 && s[j] > k) { s[j+1] = s[j]; j--; }
-            s[j+1] = k;
-          }
-          float moisture = s[n/2];
+          std::sort(s.begin(), s.end());
+          float moisture = s[s.size() / 2];
           id(soil_raw).publish_state(moisture);
 
           // ================= AUTO-CALIBRATION =================

@@ -258,6 +258,19 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 - The `interval: 60s` condition includes `wake_window_until_ms > 0`. Otherwise
   `decide_sleep` never runs again during a requested window.
 
+## Measurement loop: never block
+
+- Never call `delay()` inside a lambda. ESPHome runs lambdas on the main loop
+  and warns "`<component>` took a long time for an operation (N ms), max is 50 ms".
+  The old `for` loop with 5 × `delay(20)` blocked for ~109 ms (issue #11).
+- Waits go into YAML (`delay:` / `repeat:`), which hands control back to
+  the scheduler. The 5 soil readings are 20 ms apart as before, so the
+  median sees the same values. Each lambda now does only a single ADC read
+  (16 hardware samples, well under 1 ms).
+- `soil_samples` is a `std::vector<float>` global without restore. It is cleared at
+  the start of every measurement, and the median uses `std::sort`, taking the upper
+  middle for an even count, exactly as before.
+
 ## Auto-calibration design
 
 - **Seed, do not guess.** The first plausible reading sets dry = wet = reading
@@ -294,7 +307,8 @@ All of these were verified against the ESPHome 2026.6.4 source or on the device.
 5. `wait_until: api.connected` had no timeout.
 6. The LEDs were never switched off in `measure_and_sleep`.
 7. There was 1.5 s of blocking `delay()` in the measurement loop. This is now a median of 5 hardware-averaged
-   reads (~100 ms, still triggers a harmless "took a long time" warning).
+   reads. They are taken 20 ms apart in a YAML `repeat` loop (collected in the global
+   `soil_samples`), so nothing blocks for more than one read (issue #11).
 
 Not a bug: `deep_sleep.prevent` without `allow`. `deep_sleep.enter` calls
 `begin_sleep(manual=true)`, which ignores `prevent_`.
@@ -305,8 +319,6 @@ Not a bug: `deep_sleep.prevent` without `allow`. `deep_sleep.enter` calls
   percentages. That is expected.
 - The per-device tuning values come from one device. If the other sensors
   show a very different span, adjust `min_span` / `confirm_tol` per device.
-- The cosmetic warning `measure_and_sleep took a long time (≈109 ms)` comes
-  from the 5 × 20 ms loop.
 
 ## Build size
 
@@ -317,6 +329,7 @@ Not a bug: `deep_sleep.prevent` without `allow`. `deep_sleep.enter` calls
 | `tests/soil-test-en.yaml` (v1.0.0) | 2026.9.0 | 34.6 % (156 550 B of 452 112 B) | 57.9 % (1 061 988 B) |
 | `tests/soil-test-en.yaml` (OTA encryption, no captive portal) | 2026.9.0 | 34.6 % (156 326 B of 452 112 B) | 57.1 % (1 048 652 B) |
 | `tests/soil-test-en.yaml` (v1.2.0: + no fallback hotspot) | 2026.9.0 | 34.5 % (156 082 B of 452 112 B) | 54.0 % (990 182 B) |
+| `tests/soil-test-en.yaml` (non-blocking measurement loop) | 2026.9.0 | 34.5 % (156 194 B of 452 112 B) | 54.0 % (991 772 B) |
 
 From 2026.9 on, ESPHome builds with its own ESP-IDF 5.5.5 install instead of
 PlatformIO's, and it reports RAM against a different total (452 KB instead
