@@ -5,6 +5,7 @@ substitutions:
   friendly_name: Bodenfeuchte Test DE
   stay_awake_entity: input_boolean.soil_test_de_stay_awake
   api_encryption_key: !secret test_api_key
+  # Left over from <= v1.1.0 device files: must stay harmless (unused).
   ota_password: !secret test_ota_password
   ap_password: !secret test_ap_password
   threshold_dry: "30"

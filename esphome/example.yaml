@@ -7,8 +7,7 @@
 #
 # Needed in the Device Builder's secrets.yaml (/config/esphome/secrets.yaml):
 #   wifi_ssid, wifi_password                    (shared by all devices)
-#   soil_1_api_key, soil_1_ota_password,
-#   soil_1_ap_password                          (one set per device)
+#   soil_1_api_key                              (one per device)
 #
 # Needed in Home Assistant: an input_boolean per device, see
 # homeassistant/soil_moisture_helpers.yaml in the repository.
@@ -32,10 +31,9 @@ substitutions:
   stay_awake_entity: input_boolean.soil_moisture_1_stay_awake
 
   # Per-device credentials. The API key must be 32 bytes, base64 encoded
-  # (the Device Builder generates one when you create a new device).
+  # (the Device Builder generates one when you create a new device). It also
+  # encrypts and authenticates OTA uploads -- there is no OTA password.
   api_encryption_key: !secret soil_1_api_key
-  ota_password: !secret soil_1_ota_password
-  ap_password: !secret soil_1_ap_password
 
   # Optional: override any tuning default of the base package, e.g.
   # threshold_dry: "30"

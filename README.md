@@ -43,11 +43,11 @@ wifi_ssid: "YourWifi"
 wifi_password: "YourWifiPassword"
 
 soil_1_api_key: "…32 bytes base64…"   # the Device Builder generates one for new devices
-soil_1_ota_password: "…"
-soil_1_ap_password: "…"               # fallback hotspot, only active without Wi-Fi
 ```
 
-One `soil_N_*` set per sensor.
+One API key per sensor. There is no fallback hotspot, and the Wi-Fi credentials
+come from the Device Builder. The API key also encrypts and authenticates
+OTA uploads, so there is no separate OTA password (see [OTA security](#ota-security)).
 
 ### 3. ESPHome Device Builder: device file
 
@@ -63,8 +63,6 @@ substitutions:
   friendly_name: Soil Moisture 1
   stay_awake_entity: input_boolean.soil_moisture_1_stay_awake
   api_encryption_key: !secret soil_1_api_key
-  ota_password: !secret soil_1_ota_password
-  ap_password: !secret soil_1_ap_password
 
 packages:
   soil_moisture:
@@ -104,6 +102,10 @@ package `ref:`, and Home Assistant shows it as the device's firmware version.
   development state. `refresh: 1d` means the Device Builder checks GitHub at most once a day.
   To pick up a change right away, use *Clean Build Files* or set `refresh: 0s` temporarily.
 
+> `INFO Skipping update for …@v1.2.3, will refresh on the next run after …`
+> is harmless. ESPHome caches each `url` + `ref` separately. A release tag
+> never changes, and a new `firmware_version` is fetched immediately.
+
 Releases follow [semantic versioning](https://semver.org): a **patch** release
 contains fixes, a **minor** release adds features or substitutions and needs no
 change to device files, and a **major** release requires changes to the device file.
@@ -111,6 +113,24 @@ Read the release notes before changing the major version.
 
 Battery sensors are asleep most of the time. Plan the OTA with the
 [wake window](#requesting-a-wake-window-the-mailbox).
+
+### OTA security
+
+- OTA uploads are **encrypted and authenticated with the device's API key**
+  (`ota: encryption:`, ESPHome ≥ 2026.9). The uploader refuses to send the
+  image in plaintext.
+- The web interface **cannot** be used to upload firmware (`web_server: ota: false`),
+  and there is no captive portal. Up to v1.1.0, anyone on the Wi-Fi could
+  flash firmware through `http://<device>/update` while the device was awake.
+- **Upgrading from v1.1.0 or older:** a device whose running firmware was built
+  with ESPHome **older than 2026.9** does not offer encrypted OTA, and the
+  upload fails with *"the device did not offer encryption; refusing to send
+  the image in plaintext"*. Install **v1.1.0** once with a Device Builder on
+  ESPHome ≥ 2026.9 (that build offers encryption), then the new release.
+  Devices already built with ESPHome ≥ 2026.9 can update directly.
+- Remove the old `ota_password` and `ap_password` substitutions and their
+  secrets from device files at your convenience. They are ignored. The
+  fallback hotspot was removed (Wi-Fi comes from the Device Builder config).
 
 ## Configuration
 
@@ -123,8 +143,6 @@ Battery sensors are asleep most of the time. Plan the OTA with the
 | `friendly_name` | `Soil Moisture 1` | Device name in Home Assistant |
 | `stay_awake_entity` | `input_boolean.soil_moisture_1_stay_awake` | Wake-window helper, **one per device** |
 | `api_encryption_key` | `!secret soil_1_api_key` | Native API encryption key |
-| `ota_password` | `!secret soil_1_ota_password` | OTA password |
-| `ap_password` | `!secret soil_1_ap_password` | Fallback hotspot password |
 
 `wifi_ssid` / `wifi_password` are read from the Device Builder's `secrets.yaml`.
 
