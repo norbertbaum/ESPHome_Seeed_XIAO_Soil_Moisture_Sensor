@@ -15,10 +15,11 @@
 # =============================================================================
 
 substitutions:
-  # Release to run: a tag from the Releases page (recommended), or "main" for
-  # the latest development state. Used as the package ref below AND shown as
-  # the firmware version in Home Assistant.
-  firmware_version: v1.0.0
+  # Release to run. Replace vX.Y.Z with the latest release from
+  # https://github.com/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor/releases/latest
+  # (e.g. v1.1.0), or use "main" for the latest development state.
+  # Used as the package ref below AND shown as the firmware version in HA.
+  firmware_version: vX.Y.Z
 
   # Hostname: lowercase, digits and "-" only, unique per device.
   name: soil-moisture-1

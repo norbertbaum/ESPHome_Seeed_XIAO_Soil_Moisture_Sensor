@@ -4,9 +4,9 @@ name: Release
 # - after CI succeeded for a push to main: tag vX.Y.Z + GitHub release
 # - on pull requests: dry run, the job summary shows the version a merge
 #   would release
-# No release is created when nothing below esphome/ changed since the last
-# tag (docs-only or CI-only merges). Those changes ship with the next
-# firmware release.
+# No release is created when the firmware files (FIRMWARE_PATHS) did not
+# change since the last tag (docs, CI, tests, example.yaml). Those changes
+# ship with the next firmware release.
 
 on:
   workflow_run:
@@ -53,13 +53,15 @@ jobs:
         id: decide
         env:
           VERSION: v${{ steps.gitversion.outputs.majorMinorPatch }}
+          # Files that end up in the firmware. Keep in sync with the package.
+          FIRMWARE_PATHS: esphome/.soil-moisture.base.yaml esphome/labels
         run: |
           last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD 2>/dev/null || true)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           if git rev-parse -q --verify "refs/tags/$VERSION" >/dev/null; then
             reason="tag $VERSION already exists"
-          elif [ -n "$last" ] && git diff --quiet "$last" HEAD -- esphome/; then
-            reason="no change below esphome/ since $last"
+          elif [ -n "$last" ] && git diff --quiet "$last" HEAD -- $FIRMWARE_PATHS; then
+            reason="no firmware change since $last"
           else
             echo "release=true" >> "$GITHUB_OUTPUT"
           fi

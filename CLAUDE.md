@@ -57,9 +57,15 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
   `+semver: major` = breaking (device files must change, and the release notes must say how),
   `+semver: none` = no bump. Choose the bump when writing the commit, and
   mention it in the PR description.
-- No release when nothing below `esphome/` changed since the last tag (docs,
-  CI, tests). Those commits ship with the next firmware release, and their
-  `+semver` markers still count.
+- A release only happens when the **firmware files** changed since the last
+  tag: `esphome/.soil-moisture.base.yaml` and `esphome/labels/`
+  (`FIRMWARE_PATHS` in the workflow). Docs, CI, tests and `example.yaml` do not
+  release. Those commits ship with the next firmware release, and their
+  `+semver` markers still count. If a new firmware file is added, add it to
+  `FIRMWARE_PATHS`.
+- `example.yaml` and the README quick start use the placeholder `vX.Y.Z`
+  instead of a concrete tag, because a concrete tag goes stale with every automatic
+  release (issue #15). The README badge shows the latest release.
 - On pull requests the same workflow runs as a **dry run**. Its job summary shows
   "Merging this PR releases vX.Y.Z". Check it before merging.
 - **Version in the firmware:** the device file sets
