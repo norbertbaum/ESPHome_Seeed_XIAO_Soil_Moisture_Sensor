@@ -240,6 +240,11 @@ Not a bug: `deep_sleep.prevent` without `allow`. `deep_sleep.enter` calls
 |---|---|---|---|
 | single-device firmware (predecessor) | 2026.6.4 | 16.0 % (52 328 B) | 58.6 % (1 074 740 B) |
 | `tests/soil-test-en.yaml` (v1.0.0) | 2026.6.4 | 16.3 % (53 408 B) | 59.7 % (1 095 054 B) |
+| `tests/soil-test-en.yaml` (v1.0.0) | 2026.9.0 | 34.6 % (156 550 B of 452 112 B) | 57.9 % (1 061 988 B) |
+
+From 2026.9 on, ESPHome builds with its own ESP-IDF 5.5.5 install instead of
+PlatformIO's, and it reports RAM against a different total (452 KB instead
+of 327 KB). Compare RAM figures only within the same ESPHome version.
 
 The small growth comes from the `device_class` / `state_class` metadata and the
 labels. It is not a problem: flash is at 60 % of 1.8 MB.
