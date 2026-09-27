@@ -1,0 +1,22 @@
+# Home Assistant: one "stay awake" mailbox per sensor.
+#
+# Add to configuration.yaml (or a file included from it), then
+# Developer tools -> YAML -> reload "Input booleans".
+#
+# The key IS the entity id (input_boolean.<key>) and must match the
+# stay_awake_entity substitution of the device. Creating the helper via the UI
+# derives the entity id from the NAME instead -- a typo there means the
+# device silently never sees the request.
+input_boolean:
+  soil_moisture_1_stay_awake:
+    name: Soil Moisture 1 stay awake
+    icon: mdi:sleep-off
+  soil_moisture_2_stay_awake:
+    name: Soil Moisture 2 stay awake
+    icon: mdi:sleep-off
+  soil_moisture_3_stay_awake:
+    name: Soil Moisture 3 stay awake
+    icon: mdi:sleep-off
+  soil_moisture_4_stay_awake:
+    name: Soil Moisture 4 stay awake
+    icon: mdi:sleep-off

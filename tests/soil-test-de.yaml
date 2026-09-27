@@ -1,0 +1,18 @@
+# Local build / CI config with German labels. See soil-test-en.yaml.
+# Also overrides a few tuning defaults to prove per-device overrides work.
+substitutions:
+  name: soil-test-de
+  friendly_name: Bodenfeuchte Test DE
+  stay_awake_entity: input_boolean.soil_test_de_stay_awake
+  api_encryption_key: !secret test_api_key
+  ota_password: !secret test_ota_password
+  ap_password: !secret test_ap_password
+  threshold_dry: "30"
+  sleep_wet_min: "240"
+
+packages:
+  labels: !include ../esphome/labels/.soil-moisture-labels-de.yaml
+  base: !include ../esphome/.soil-moisture.base.yaml
+
+wifi:
+  use_address: 192.0.2.10

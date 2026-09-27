@@ -1,0 +1,3 @@
+# Committed on purpose: ESPHome creates this file (ignoring secrets.yaml)
+# when it is missing. tests/secrets.yaml holds dummy values and IS tracked.
+/.esphome/

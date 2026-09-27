@@ -1,0 +1,3 @@
+# Normalise line endings: the YAML and scripts must be byte-identical on
+# Windows checkouts, in CI and when ESPHome pulls the package from GitHub.
+* text=auto eol=lf

@@ -1,0 +1,3 @@
+# ESPHome version used for CI and local builds. Keep in sync with the
+# ESPHome Device Builder add-on in Home Assistant (see CLAUDE.md).
+esphome==2026.9.0
