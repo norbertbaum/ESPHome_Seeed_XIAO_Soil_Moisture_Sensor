@@ -52,8 +52,9 @@ jobs:
       - run: esphome version
       - name: Validate
         run: esphome config tests/soil-test-${{ matrix.lang }}.yaml 2>&1 | tee config.txt
-      # Security guard (issues #19, #20): only the encrypted esphome OTA may
-      # exist -- no plaintext web_server /update endpoint, no OTA warnings.
+      # Security guard (issues #19, #20, #23): only the encrypted esphome OTA
+      # may exist -- no plaintext web_server /update endpoint, no OTA
+      # warnings, no fallback hotspot or captive portal.
       - name: Check OTA security
         run: |
           if sed -n '/^ota:/,/^[a-z_]*:$/p' config.txt | grep -q 'platform: web_server'; then
@@ -62,6 +63,12 @@ jobs:
           if grep -E 'WARNING.*(OTA|ota)' config.txt; then
             echo "::error::OTA related warning in esphome config"; exit 1
           fi
-          echo "OTA: only the encrypted esphome platform"
+          if grep -q '^captive_portal:' config.txt; then
+            echo "::error::captive_portal must not be configured"; exit 1
+          fi
+          if sed -n '/^wifi:/,/^[a-z_]*:$/p' config.txt | grep -q '^  ap:'; then
+            echo "::error::wifi fallback hotspot (ap:) must not be configured"; exit 1
+          fi
+          echo "OTA: only the encrypted esphome platform, no hotspot"
       - name: Compile
         run: esphome compile tests/soil-test-${{ matrix.lang }}.yaml

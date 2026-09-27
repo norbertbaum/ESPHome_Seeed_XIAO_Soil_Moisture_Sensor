@@ -18,8 +18,8 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
   [norbertbaum/fonske_Brink-flair-modbus](https://github.com/norbertbaum/fonske_Brink-flair-modbus):
   hidden `.base.yaml`, `labels/.…-labels-<lang>.yaml`, `example.yaml`.
 - **The repository is public.** No real credentials or IP addresses. The
-  base package takes all credentials via substitutions (`api_encryption_key`,
-  `ap_password`) and `!secret wifi_ssid/wifi_password`.
+  base package takes its only per-device credential via a substitution
+  (`api_encryption_key`) and `!secret wifi_ssid/wifi_password`.
   `tests/secrets.yaml` holds dummy values and is committed on purpose. The
   `.gitignore` ignores every other `secrets.yaml`. **Never** add an
   `esphome/secrets.yaml`: ESPHome resolves `!secret` relative to the
@@ -142,12 +142,12 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 ## Substitution contract
 
 - **Required** (no default, config fails without them): `name`,
-  `friendly_name`, `stay_awake_entity`, `api_encryption_key`, `ap_password`,
-  and all `label_*` / `state_*` keys (from the label file).
+  `friendly_name`, `stay_awake_entity`, `api_encryption_key`, and all
+  `label_*` / `state_*` keys (from the label file).
 - `firmware_version` defaults to `dev`, see "Releases".
-- `ota_password` was removed in the OTA-encryption release. Device files that still
-  set it keep working, because unused substitutions are ignored.
-  `tests/soil-test-de.yaml` keeps it on purpose to prove that.
+- `ota_password` and `ap_password` were removed in v1.2.0. Device files that
+  still set them keep working, because unused substitutions are ignored.
+  `tests/soil-test-de.yaml` keeps both on purpose to prove that.
 - **Optional** tuning defaults are in the `substitutions:` block of the base package.
   Device substitutions override package substitutions.
 - Label values are pasted into C++ string literals. No `"` and no `\`.
@@ -174,7 +174,10 @@ A clean compile takes about 2 minutes. Reference sizes are in the
   uploads only while the fallback hotspot is active, but ESPHome then still warns
   "OTA encryption does not cover the web_server OTA platform". It was removed:
   on a deep-sleep device it is useless, because `measure_and_sleep` gives up
-  after 60 s without Wi-Fi, which is about when the hotspot appears. The fallback AP stays.
+  after 60 s without Wi-Fi, which is about when the hotspot appears.
+- The fallback hotspot (`wifi: ap:`) was removed as well (issue #23). The owner
+  configures Wi-Fi only through the Device Builder, and it is one less attack surface
+  and one less secret per device. Do not add `ap:` or `captive_portal:` back.
 - Check after changes: `esphome config` prints **no** OTA warning, and the
   resolved `ota:` list contains only `platform: esphome`.
 
@@ -313,6 +316,7 @@ Not a bug: `deep_sleep.prevent` without `allow`. `deep_sleep.enter` calls
 | `tests/soil-test-en.yaml` (v1.0.0) | 2026.6.4 | 16.3 % (53 408 B) | 59.7 % (1 095 054 B) |
 | `tests/soil-test-en.yaml` (v1.0.0) | 2026.9.0 | 34.6 % (156 550 B of 452 112 B) | 57.9 % (1 061 988 B) |
 | `tests/soil-test-en.yaml` (OTA encryption, no captive portal) | 2026.9.0 | 34.6 % (156 326 B of 452 112 B) | 57.1 % (1 048 652 B) |
+| `tests/soil-test-en.yaml` (v1.2.0: + no fallback hotspot) | 2026.9.0 | 34.5 % (156 082 B of 452 112 B) | 54.0 % (990 182 B) |
 
 From 2026.9 on, ESPHome builds with its own ESP-IDF 5.5.5 install instead of
 PlatformIO's, and it reports RAM against a different total (452 KB instead

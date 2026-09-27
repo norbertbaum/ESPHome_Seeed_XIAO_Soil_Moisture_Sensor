@@ -5,7 +5,7 @@
 # comes in through substitutions from the device file (see example.yaml):
 #
 #   required:  name, friendly_name, stay_awake_entity,
-#              api_encryption_key, ap_password
+#              api_encryption_key
 #   labels:    one of labels/.soil-moisture-labels-{de,en}.yaml
 #   optional:  the tuning defaults in the substitutions block below
 #
@@ -118,15 +118,12 @@ wifi:
   password: !secret wifi_password
   fast_connect: true
   power_save_mode: high
-  ap:
-    ssid: ${name}
-    password: ${ap_password}
-
-# Deliberately NO captive_portal: it auto-loads "ota: platform: web_server"
-# (plaintext /update while the fallback hotspot is up) and is of no use on a
-# deep-sleep device -- measure_and_sleep gives up after 60 s without Wi-Fi,
-# about when the hotspot would appear. The fallback AP itself stays: on USB
-# power (no sleep) it still allows an encrypted OTA via 192.168.4.1.
+  # Deliberately NO fallback hotspot (ap:) and NO captive_portal: the Wi-Fi
+  # credentials come from the device config in the ESPHome Device Builder.
+  # captive_portal would also auto-load "ota: platform: web_server" (a
+  # plaintext /update endpoint), and on a deep-sleep device a hotspot is
+  # useless anyway -- measure_and_sleep gives up after 60 s without Wi-Fi,
+  # about when the hotspot would appear (issues #20, #23).
 
 # Wall clock for the time based calibration decay. If not (yet) synced the
 # decay is simply skipped for this measurement.

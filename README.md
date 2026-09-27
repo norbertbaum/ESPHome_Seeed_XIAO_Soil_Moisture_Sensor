@@ -43,10 +43,10 @@ wifi_ssid: "YourWifi"
 wifi_password: "YourWifiPassword"
 
 soil_1_api_key: "…32 bytes base64…"   # the Device Builder generates one for new devices
-soil_1_ap_password: "…"               # fallback hotspot, only active without Wi-Fi
 ```
 
-One `soil_N_*` set per sensor. The API key also encrypts and authenticates
+One API key per sensor. There is no fallback hotspot, and the Wi-Fi credentials
+come from the Device Builder. The API key also encrypts and authenticates
 OTA uploads, so there is no separate OTA password (see [OTA security](#ota-security)).
 
 ### 3. ESPHome Device Builder: device file
@@ -63,7 +63,6 @@ substitutions:
   friendly_name: Soil Moisture 1
   stay_awake_entity: input_boolean.soil_moisture_1_stay_awake
   api_encryption_key: !secret soil_1_api_key
-  ap_password: !secret soil_1_ap_password
 
 packages:
   soil_moisture:
@@ -129,8 +128,9 @@ Battery sensors are asleep most of the time. Plan the OTA with the
   the image in plaintext"*. Install **v1.1.0** once with a Device Builder on
   ESPHome ≥ 2026.9 (that build offers encryption), then the new release.
   Devices already built with ESPHome ≥ 2026.9 can update directly.
-- Remove the old `ota_password` substitution and its secret from device files
-  at your convenience. It is ignored.
+- Remove the old `ota_password` and `ap_password` substitutions and their
+  secrets from device files at your convenience. They are ignored. The
+  fallback hotspot was removed (Wi-Fi comes from the Device Builder config).
 
 ## Configuration
 
@@ -143,7 +143,6 @@ Battery sensors are asleep most of the time. Plan the OTA with the
 | `friendly_name` | `Soil Moisture 1` | Device name in Home Assistant |
 | `stay_awake_entity` | `input_boolean.soil_moisture_1_stay_awake` | Wake-window helper, **one per device** |
 | `api_encryption_key` | `!secret soil_1_api_key` | Native API encryption key |
-| `ap_password` | `!secret soil_1_ap_password` | Fallback hotspot password |
 
 `wifi_ssid` / `wifi_password` are read from the Device Builder's `secrets.yaml`.
 
