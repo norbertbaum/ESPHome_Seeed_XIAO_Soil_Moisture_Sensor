@@ -38,10 +38,19 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
   `documentation`, `question`.
 - Work on branches (`feature/…`, `fix/…`, `docs/…`) and open pull requests.
   Do not push to `main` directly.
-- **Clean up after every merge** (issue #17): delete the branch on GitHub and
-  locally, then `git fetch --prune` and `git worktree prune`. First check with
-  `git merge-base --is-ancestor <branch> main` that it really is merged, and
-  never delete unmerged work without asking.
+- **Clean up after every merge** (issues #17, #25):
+  - On GitHub the repo setting **"Automatically delete head branches"** is on
+    (since 2026-09-27) and deletes the PR branch on merge. Check it with
+    `gh api repos/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor --jq .delete_branch_on_merge`,
+    which must print `true`. If the remote branch is already gone, that is
+    expected. Only delete it by hand when the setting is off, or for a branch
+    that was not merged through a PR.
+  - Locally nothing is deleted automatically. First check with
+    `git merge-base --is-ancestor <branch> main` that the branch really is merged,
+    then `git branch -d <branch>` (`-D` only after that check, when `-d`
+    complains because another branch is checked out), `git fetch --prune`
+    and `git worktree prune`.
+  - Never delete unmerged work without asking.
 - Code comments, commit messages, PRs and docs are in **English**. Only the
   issues and the German label file are German.
 - Commit messages: imperative summary line, body explains why.
