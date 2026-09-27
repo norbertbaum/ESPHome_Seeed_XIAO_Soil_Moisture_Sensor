@@ -1,0 +1,20 @@
+# ESPHome build output
+.esphome/
+**/.esphome/
+
+# Real credentials never go into this public repository.
+# tests/secrets.yaml holds dummy values and is committed on purpose.
+secrets.yaml
+!tests/secrets.yaml
+
+# Python
+__pycache__/
+.venv/
+venv/
+
+# Editors / OS
+.vscode/
+.idea/
+.claude/settings.local.json
+Thumbs.db
+.DS_Store
