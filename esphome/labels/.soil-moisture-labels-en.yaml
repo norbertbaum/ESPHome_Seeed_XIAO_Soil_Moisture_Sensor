@@ -1,0 +1,38 @@
+# English labels for the soil moisture sensor.
+#
+# The entity names below are intentionally identical to the names of the
+# original single-device firmware (e.g. "Soil Moisture %", "Battery %"). ESPHome
+# derives the entity unique_id from the name, so changing a name creates a NEW
+# entity in Home Assistant and orphans the old one including its history.
+# Keep these stable; translations belong in the other label files.
+#
+# Values end up inside C++ string literals: no double quotes or backslashes.
+substitutions:
+  # ---- entity names ----
+  label_soil_moisture: Soil Moisture %
+  label_soil_raw_voltage: Soil Raw Voltage
+  label_cal_dry: Cal Dry (learned)
+  label_cal_wet: Cal Wet (learned)
+  label_cal_span: Cal Span
+  label_next_sleep: Next Sleep
+  label_battery_voltage: Battery Voltage
+  label_battery: Battery %
+  label_soil_status: Soil Status
+  label_power_mode: Power Mode
+  label_sleep_decision: Sleep Decision
+  label_disable_deep_sleep: Disable Deep Sleep
+  label_reset_calibration: Reset Calibration
+
+  # ---- text sensor states ----
+  state_dry: Dry
+  state_almost_dry: Almost Dry
+  state_normal: Normal Moisture
+  state_sensor_error: Sensor Error (not in soil?)
+  state_calibrating: Calibrating
+  state_power_usb: USB (debug, no sleep)
+  state_power_battery: Battery (deep sleep)
+  state_awake_usb: "awake: USB"
+  state_awake_switch: "awake: HA switch"
+  state_awake_request: "awake: HA request"
+  state_min_left: min left
+  state_sleeping: sleeping

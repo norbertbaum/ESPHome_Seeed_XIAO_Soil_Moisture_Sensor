@@ -29,35 +29,64 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
 
 ## Working conventions
 
+- **Every piece of work gets a GitHub issue first, written in German** (the
+  owner reads them). This includes bugs found on the way and follow-ups. PRs
+  reference their issue (`Closes #N`). Issue labels: `bug`, `enhancement`,
+  `documentation`, `question`.
 - Work on branches (`feature/…`, `fix/…`, `docs/…`) and open pull requests.
   Do not push to `main` directly.
-- Code comments and docs are in **English**. Only the German label file is German.
+- Code comments, commit messages, PRs and docs are in **English**. Only the
+  issues and the German label file are German.
 - Commit messages: imperative summary line, body explains why.
 - When behaviour or a default changes, update the README tables, this file, and
   `project.version` in the base package in the same PR. Release with a
   tag `vX.Y.Z` so devices can pin `ref:`.
-- Keep `requirements.txt` (ESPHome pin) in sync with the ESPHome Device Builder
-  add-on version in Home Assistant (2026.9.0 as of 2026-09-27).
-  `esphome: min_version` in the base package is the lowest version that has been verified.
+
+## ESPHome version policy: always the newest
+
+- **Always develop and test against the newest ESPHome release.** Before
+  working, run `pip install -U esphome` and check `esphome version` against
+  the newest version on PyPI. Never rely on an older local install: 2026.6.4
+  accepted an all-zeros test API key, 2026.9.0 rejects it, and CI caught it
+  only after the push (issue #3).
+- `requirements.txt` pins the version so builds are reproducible. Dependabot
+  (`.github/dependabot.yml`) bumps the pin with a PR as soon as a new release
+  appears, and the CI run on that PR is the compatibility test. Merge it
+  after checking the release notes for breaking changes.
+- CI builds every language twice: with the `pinned` version and with the
+  `latest` version from PyPI. A weekly scheduled run catches upstream breakage
+  even when the repo does not change.
+- `esphome: min_version` in the base package = the pinned version (only that
+  one is tested). Raise it together with the pin.
+- The Home Assistant ESPHome Device Builder add-on should run at least the
+  pinned version. It was 2026.9.0 as of 2026-09-27.
 
 ## Verify every change
 
 ```bash
-pip install -r requirements.txt
+pip install -U esphome && esphome version  # newest release, see policy above
 python tests/check_labels.py              # label files consistent with base
 esphome config  tests/soil-test-en.yaml   # both languages
 esphome config  tests/soil-test-de.yaml
 esphome compile tests/soil-test-en.yaml   # at least one full compile
 ```
 
-CI (`.github/workflows/ci.yaml`) runs all of this for `en` and `de`.
+CI (`.github/workflows/ci.yaml`) runs all of this for `en` × `de` and
+`pinned` × `latest`.
+
+The test API key in `tests/secrets.yaml` is random but public. ESPHome ≥ 2026.9
+rejects the all-zeros key. Never use a test key on a real device.
 `soil-test-de.yaml` also overrides tuning values and adds `wifi: use_address`,
 which proves that device-level overrides and merges still work.
 
 **Windows:** ESP-IDF object paths exceed `CMAKE_OBJECT_PATH_MAX` (250) when the
 build directory is deep. Symptom: "Configuring incomplete, errors occurred!"
 plus CMake warnings about 249-character object paths. Set
-`ESPHOME_DATA_DIR` to a short path, e.g. `C:\Daten\.esph`. A second,
+`ESPHOME_DATA_DIR` to a short path, e.g. `C:\Daten\.esph`. Also **compile
+from PowerShell or cmd, not from Git Bash**: since 2026.9 ESPHome installs
+ESP-IDF itself, and that installer aborts under MSYS/MinGW ("MSys/Mingw is not
+supported", then "ESP-IDF 5.5.5 framework installation failure").
+`esphome config` works in any shell. A third,
 independent trap: PlatformIO's `tool-cmake` can be extracted incompletely
 ("Could not find CMAKE_ROOT"). Fix: delete `~/.platformio/packages/tool-cmake`,
 and it is downloaded again.
@@ -211,6 +240,11 @@ Not a bug: `deep_sleep.prevent` without `allow`. `deep_sleep.enter` calls
 |---|---|---|---|
 | single-device firmware (predecessor) | 2026.6.4 | 16.0 % (52 328 B) | 58.6 % (1 074 740 B) |
 | `tests/soil-test-en.yaml` (v1.0.0) | 2026.6.4 | 16.3 % (53 408 B) | 59.7 % (1 095 054 B) |
+| `tests/soil-test-en.yaml` (v1.0.0) | 2026.9.0 | 34.6 % (156 550 B of 452 112 B) | 57.9 % (1 061 988 B) |
+
+From 2026.9 on, ESPHome builds with its own ESP-IDF 5.5.5 install instead of
+PlatformIO's, and it reports RAM against a different total (452 KB instead
+of 327 KB). Compare RAM figures only within the same ESPHome version.
 
 The small growth comes from the `device_class` / `state_class` metadata and the
 labels. It is not a problem: flash is at 60 % of 1.8 MB.

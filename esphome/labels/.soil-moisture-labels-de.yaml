@@ -1,0 +1,37 @@
+# Deutsche Bezeichnungen für den Bodenfeuchte-Sensor.
+#
+# Achtung: ESPHome leitet die unique_id einer Entity aus ihrem Namen ab. Wer
+# die Sprache eines bestehenden Geräts wechselt oder hier einen Namen ändert,
+# bekommt in Home Assistant NEUE Entities, die alten samt Verlauf verwaisen.
+#
+# Die Werte landen in C++-Stringliteralen: keine doppelten Anführungszeichen
+# und keine Backslashes verwenden.
+substitutions:
+  # ---- Entity-Namen ----
+  label_soil_moisture: Bodenfeuchte
+  label_soil_raw_voltage: Sondenspannung (roh)
+  label_cal_dry: Kalibrierung trocken (gelernt)
+  label_cal_wet: Kalibrierung feucht (gelernt)
+  label_cal_span: Kalibrierung Hub
+  label_next_sleep: Nächste Messung in
+  label_battery_voltage: Akkuspannung
+  label_battery: Akku
+  label_soil_status: Bodenstatus
+  label_power_mode: Stromversorgung
+  label_sleep_decision: Schlafentscheidung
+  label_disable_deep_sleep: Deep Sleep deaktivieren
+  label_reset_calibration: Kalibrierung zurücksetzen
+
+  # ---- Zustände der Text-Sensoren ----
+  state_dry: Trocken
+  state_almost_dry: Fast trocken
+  state_normal: Feucht
+  state_sensor_error: Sensorfehler (nicht in Erde?)
+  state_calibrating: Kalibrierung läuft
+  state_power_usb: USB (Debug, kein Schlaf)
+  state_power_battery: Akku (Deep Sleep)
+  state_awake_usb: "wach: USB"
+  state_awake_switch: "wach: HA-Schalter"
+  state_awake_request: "wach: HA-Anfrage"
+  state_min_left: Min. übrig
+  state_sleeping: schläft

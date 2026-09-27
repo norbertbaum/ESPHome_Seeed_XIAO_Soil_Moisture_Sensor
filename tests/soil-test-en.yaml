@@ -1,0 +1,15 @@
+# Local build / CI config: same as esphome/example.yaml, but the package is
+# included from this checkout instead of GitHub. Use it to validate and
+# compile changes before pushing. Credentials come from tests/secrets.yaml
+# (dummy values, never flash this to a real device).
+substitutions:
+  name: soil-test-en
+  friendly_name: Soil Test EN
+  stay_awake_entity: input_boolean.soil_test_en_stay_awake
+  api_encryption_key: !secret test_api_key
+  ota_password: !secret test_ota_password
+  ap_password: !secret test_ap_password
+
+packages:
+  labels: !include ../esphome/labels/.soil-moisture-labels-en.yaml
+  base: !include ../esphome/.soil-moisture.base.yaml
