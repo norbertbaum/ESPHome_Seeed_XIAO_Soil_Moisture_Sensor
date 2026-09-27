@@ -461,7 +461,7 @@ script:
       - output.set_level:
           id: pwm_output
           level: 68%
-      - logger.log: "Analog frontend on (GPIO14 power, 200kHz PWM @ 68%)"
+      - logger.log: "Analog frontend on (GPIO14 power, 200kHz PWM @ 68%%)"
 
   - id: all_leds_off
     then:
