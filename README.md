@@ -116,6 +116,12 @@ Read the release notes before changing the major version.
 Battery sensors are asleep most of the time. Plan the OTA with the
 [wake window](#requesting-a-wake-window-the-mailbox).
 
+After an update, check the **Firmware** entity. It must show the new release.
+ESP32 rolls back to the previous firmware if a new one resets before it has
+been confirmed. Since v1.3.1 the firmware is confirmed as soon as it has connected to
+Home Assistant. Before that, confirmation took 60 s, so unplugging USB too early
+silently brought back the old version.
+
 ### OTA security
 
 - OTA uploads are **encrypted and authenticated with the device's API key**
