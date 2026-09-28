@@ -18,6 +18,8 @@ credentials.
   re-measures every 60 s, so you can read logs and flash over the air. On battery it sleeps.
 - **"Mailbox" wake window.** Request a 10 min wake window from Home Assistant
   while the device is asleep. It picks the request up on the next wake-up, so OTA updates work on battery.
+- **Push button.** Wakes the sensor, blinks the soil status in colour for 15 s
+  and keeps it awake for 5 min, for example for an OTA update.
 - **Labels in English and German**, selected per device.
 
 ## Quick start
@@ -160,8 +162,10 @@ Override any of these in the device's `substitutions:`.
 | `sleep_error_min` | `15` | Sleep after an implausible reading (min) |
 | `sleep_calibrating_min` | `60` | Sleep while the learned span is too small (min) |
 | `wake_budget_min` | `10` | Length of a requested wake window (min) |
+| `button_awake_min` | `5` | Stay awake after a button press (min) |
+| `button_blink_s` | `15` | Duration of the blinking status after a button press (s) |
 | `v_min_plausible` | `0.60` | Readings below (V) are rejected: frontend off / short |
-| `v_max_plausible` | `2.95` | Readings above (V) are rejected |
+| `v_max_plausible` | `3.20` | Readings above (V) are rejected (ADC end of range) |
 | `min_span` | `0.05` | Learned span (V) needed before a percentage is reported |
 | `decay_frac_per_day` | `0.02` | Fraction of the span both limits move inwards per day |
 | `confirm_tol` | `0.02` | Tolerance (V) for confirming a new extreme |
@@ -202,6 +206,8 @@ The label file sets both the entity names and the status texts (*Dry* /
 | Sleep Decision | Schlafentscheidung | diagnostic | why it sleeps or stays awake |
 | Disable Deep Sleep | Deep Sleep deaktivieren | switch | latching "stay awake", survives deep sleep |
 | Reset Calibration | Kalibrierung zurücksetzen | button | discard learned range |
+| Firmware | Firmware | diagnostic | running release (`firmware_version`) |
+| ESPHome Version | ESPHome-Version | diagnostic | ESPHome version the firmware was built with |
 
 The web interface is available at `http://<name>.local/` while the device is awake.
 
@@ -213,6 +219,7 @@ The device decides on **every boot** how to behave. The rules are checked in thi
 |---|---|
 | USB host connected | No deep sleep. Re-measures every 60 s, logs and OTA available. |
 | *Disable Deep Sleep* switch on | Stays awake on battery too (latching, until switched off). |
+| Push button pressed | Measures, blinks the status, then a **wake window** of `button_awake_min`. |
 | Stay-awake helper on in HA | **One-time wake window** of `wake_budget_min` on the next wake-up. |
 | Otherwise | Measure, then deep sleep for a moisture-dependent duration. |
 
@@ -228,6 +235,9 @@ looks for USB SOF packets, which only a real host sends.
 | ≥ 60 % | Normal Moisture | green | 8 h |
 | span < `min_span` | Calibrating | yellow | 1 h |
 | implausible | Sensor Error | red | 15 min |
+
+After a normal measurement the LED shows the colour for 5 s. After a button press
+it blinks instead, see [Push button](#push-button).
 
 ### Requesting a wake window (the mailbox)
 
@@ -272,12 +282,13 @@ dry = wet = reading, and the limits then move apart. Until the span reaches
 `Calibrating (0.002/0.05 V)`. That is expected: the soil has to dry out and be
 watered once. After a full cycle the whole 0–100 % scale is used.
 
-Measured on a real device: probe in air 2.38 V, moist pot 2.21–2.24 V, learned
-spans of 0.18–0.40 V. **Wet = lower voltage.** The span is much smaller than
+Measured on real devices: probe in air 2.38 V on one unit and 2.88–2.91 V on
+another, moist pot 2.21–2.24 V, learned spans of 0.18–0.40 V. The units differ
+by more than 0.5 V, which is exactly why each sensor learns its own range. **Wet = lower voltage.** The span is much smaller than
 the Seeed wiki values (2.75 / 1.2 V) suggest. Guessed factory values would
 compress the scale to a few percent. That is why they are not used.
 
-> **Limitation:** Air (2.38 V) is *inside* the plausible window. The sensor cannot detect "probe not in soil" at the dry end.
+> **Limitation:** Air is *inside* the plausible window. The sensor cannot detect "probe not in soil" at the dry end.
 > It is learned as dry (0 %). Only the lower limit reliably catches a dead analog frontend (≈ 0 V).
 
 **Reset**: press the button 3× quickly (blinks green twice) or press
@@ -285,8 +296,22 @@ compress the scale to a few percent. That is why they are not used.
 
 ## Push button
 
-- **1× short**: measure now
+- **1× short**: measure now, **blink the status for 15 s**, then **stay awake
+  for 5 min** (`button_blink_s`, `button_awake_min`). This also works on
+  battery: the button wakes the sensor from deep sleep. The 5 minutes are
+  enough to start an OTA update from the Device Builder. *Sleep Decision*
+  shows `awake: button (N min left)`.
 - **3× short**: discard learned calibration, then blink green twice
+
+| Blinking | Meaning |
+|---|---|
+| 🟢 green, slow | wet (*Normal Moisture*) |
+| 🟡 yellow, slow | slightly dry (*Almost Dry*) |
+| 🔴 red, slow | dry (*Dry*) |
+| 🟡🟢 yellow and green alternating | still calibrating, no percentage yet |
+| 🔴 red, fast | sensor error (implausible reading) |
+
+"Slow" means 500 ms on, 500 ms off. "Fast" means 250 ms on, 250 ms off.
 
 ## Hardware
 

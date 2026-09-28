@@ -215,8 +215,12 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 - `sensor_hw_init` must run after **every** boot, including deep-sleep
   wake-ups, which lose GPIO/LEDC state. `measure_and_sleep` also calls it,
   because the 60 s timer and the button trigger it too.
-- Measured voltages: air 2.384 V, pot before watering 2.240 V, right after
-  watering 2.205 V. First device's learned range after a few weeks: about 2.31–2.71 V.
+- Measured voltages (unit 1): air 2.384 V, pot before watering 2.240 V, right after
+  watering 2.205 V. Unit 2 ("Bodenfeuchte 2", 2026-09-28) reads air at
+  **2.875–2.910 V**, so the units differ by more than 0.5 V. That is why
+  `v_max_plausible` was raised from 2.95 to 3.20 V (issue #28): the upper
+  limit only rejects the ADC end of range.
+  Unit 1's learned range after a few weeks: about 2.31–2.71 V.
   **Wet = lower voltage.** The span is 0.18–0.40 V, far below the Seeed wiki values.
 - An early note "air reads 0.01 V" was **wrong**. It was the dead ADC before
   the frontend init existed.
@@ -266,6 +270,34 @@ A clean compile takes about 2 minutes. Reference sizes are in the
   Wi-Fi/HA meant the script hung forever and the battery drained.
 - The `interval: 60s` condition includes `wake_window_until_ms > 0`. Otherwise
   `decide_sleep` never runs again during a requested window.
+
+## Push button, wake-up and status LED (issue #27)
+
+- GPIO2 is both the `gpio` binary sensor and the `deep_sleep` `wakeup_pin`
+  (`allow_other_uses: true` on both). ESPHome supports GPIO wake-up from
+  deep sleep on the ESP32-C6 for LP GPIOs 0–7 (`deep_sleep/__init__.py`
+  `WAKEUP_PINS`, `esp_deep_sleep_enable_gpio_wakeup`).
+  `wakeup_pin_mode: KEEP_AWAKE` defers sleep while the button is held.
+- A button **wake-up** is detected in `on_boot` via `esp_sleep_get_wakeup_cause()`
+  (`ESP_SLEEP_WAKEUP_GPIO`, and `EXT1` as a fallback). That boot is then
+  treated as a press: `register_button_press` sets `button_pressed` and
+  opens a `button_awake_min` window, and the normal `measure_and_sleep` follows.
+- A press **while awake** runs `on_button_press`: it registers the press,
+  waits for a running `measure_and_sleep` (single mode would otherwise drop the call),
+  then measures again.
+- The measurement no longer switches LEDs. It sets `led_state` (0 none, 1 wet,
+  2 almost dry, 3 dry, 4 calibrating, 5 error). `led_show_status` shows it
+  5 s solid, or blinking for `button_blink_s` after a press. Calibrating and
+  error have their own patterns, so yellow never means two things.
+- The window reuses the HA wake-window machinery (`wake_window_until_ms`,
+  `open_wake_window`). `wake_by_button` only selects the *Sleep Decision*
+  text. The `interval: 60s` re-measures during the window, and the window
+  expiring sends the device back to sleep.
+- **Unverified on hardware:** that the pull-up keeps GPIO2 high during deep
+  sleep. ESP-IDF keeps the internal resistors by default
+  (`ESP_SLEEP_GPIO_ENABLE_INTERNAL_RESISTORS`). A floating pin would cause
+  spurious wake-ups and drain the battery. Watch *Sleep Decision* and the
+  wake-up log after flashing.
 
 ## Measurement loop: never block
 
