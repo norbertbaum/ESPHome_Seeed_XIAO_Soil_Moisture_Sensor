@@ -21,6 +21,8 @@ substitutions:
   label_sleep_decision: Schlafentscheidung
   label_disable_deep_sleep: Deep Sleep deaktivieren
   label_reset_calibration: Kalibrierung zurücksetzen
+  label_firmware: Firmware
+  label_esphome_version: ESPHome-Version
 
   # ---- Zustände der Text-Sensoren ----
   state_dry: Trocken
@@ -33,5 +35,6 @@ substitutions:
   state_awake_usb: "wach: USB"
   state_awake_switch: "wach: HA-Schalter"
   state_awake_request: "wach: HA-Anfrage"
+  state_awake_button: "wach: Taster"
   state_min_left: Min. übrig
   state_sleeping: schläft

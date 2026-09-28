@@ -25,10 +25,11 @@ substitutions:
   # 0.002 V). Do not raise it more than needed -- how far the voltage drops in
   # truly saturated soil is unknown.
   v_min_plausible: "0.60"
-  # Upper sanity limit. NOTE: air reads 2.384 V on this hardware, i.e. INSIDE
-  # the window. "Probe not in soil" cannot be detected at the top end; air is
-  # learned as the dry extreme (0 % moisture, which is acceptable).
-  v_max_plausible: "2.95"
+  # Upper sanity limit: only rejects a reading at the ADC's end of range. Units
+  # differ a lot -- air read 2.384 V on one and 2.91 V on another (issue #28)
+  # -- so it must stay well above any real reading. "Probe not in soil" cannot
+  # be detected at the top end; air is learned as the dry extreme (0 %).
+  v_max_plausible: "3.20"
   # Minimum learned span before a percentage is reported. Must stay well below
   # the real span of the probe (~0.18-0.40 V measured).
   min_span: "0.05"
@@ -54,6 +55,13 @@ substitutions:
   # input_boolean in HA is still on.
   wake_budget_min: "10"
 
+  # ---- Push button (issue #27) ----------------------------------------------
+  # A short press (also from deep sleep: GPIO2 wakes the device) measures,
+  # blinks the status colour for button_blink_s and keeps the device awake
+  # for button_awake_s (e.g. for an OTA update). Both in seconds.
+  button_awake_s: "300"
+  button_blink_s: "15"
+
   # ---- USB detection settle time (ms) ---------------------------------------
   # ESP-IDF reports "USB connected" right after boot even on battery (see
   # CLAUDE.md). Do not remove or shorten drastically.
@@ -74,6 +82,7 @@ esphome:
   includes:
     - <driver/usb_serial_jtag.h>
     - <esp_system.h>
+    - <esp_sleep.h>
 
   # Priority 600 (ESPHome default) is MANDATORY, not arbitrary: ledc/gpio
   # outputs are set up at HARDWARE (800). With 800 on_boot raced against the
@@ -83,6 +92,15 @@ esphome:
     then:
       # MUST run before the first measurement, otherwise the ADC reads ~0 V.
       - script.execute: sensor_hw_init
+      - lambda: |-
+          id(firmware_version_sensor).publish_state("${firmware_version}");
+          // Woken from deep sleep by the push button (GPIO2)? Then this boot
+          // IS the button press: blink the result and keep the device awake.
+          auto cause = esp_sleep_get_wakeup_cause();
+          if (cause == ESP_SLEEP_WAKEUP_GPIO || cause == ESP_SLEEP_WAKEUP_EXT1) {
+            ESP_LOGI("button", "Woken by the push button");
+            id(register_button_press).execute();
+          }
       - script.execute: measure_and_sleep
 
 esp32:
@@ -133,6 +151,15 @@ time:
 
 deep_sleep:
   id: deep_sleep_control
+  # The push button wakes the device (GPIO2 is an LP GPIO on the ESP32-C6).
+  # KEEP_AWAKE: while the button is held, sleep is deferred instead of waking
+  # up again immediately.
+  wakeup_pin:
+    number: GPIO2
+    mode: INPUT_PULLUP
+    inverted: true
+    allow_other_uses: true
+  wakeup_pin_mode: KEEP_AWAKE
 
 globals:
   # ---- Learned calibration (survives deep sleep via NVS) ----
@@ -200,6 +227,33 @@ globals:
   - id: soil_samples
     type: std::vector<float>
     restore_value: no
+
+  # ---- Status LED ----
+  # Result of the last measurement: 0 none, 1 wet (green), 2 almost dry
+  # (yellow), 3 dry (red), 4 calibrating (yellow/green), 5 sensor error
+  # (fast red). Set by the measurement, shown by led_show_status.
+  - id: led_state
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+  # A button press is pending: the next led_show_status blinks for
+  # button_blink_s instead of the normal 5 s solid light.
+  - id: button_pressed
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  # The current wake window was opened by the button (not by HA).
+  - id: wake_by_button
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+  - id: led_tick             # blink phase counter (250 ms steps)
+    type: int
+    restore_value: no
+    initial_value: "0"
 
 sensor:
   - platform: adc
@@ -326,6 +380,20 @@ text_sensor:
     id: sleep_decision
     entity_category: diagnostic
 
+  # Firmware release (firmware_version, published in on_boot) and the ESPHome
+  # version it was built with -- a build older than 2026.9 cannot do
+  # encrypted OTA (issue #29).
+  - platform: template
+    name: "${label_firmware}"
+    id: firmware_version_sensor
+    icon: mdi:tag
+    entity_category: diagnostic
+
+  - platform: version
+    name: "${label_esphome_version}"
+    hide_timestamp: true
+    entity_category: diagnostic
+
 binary_sensor:
   # The "mailbox": the device FETCHES this wish from HA on every wake-up. The
   # other direction is impossible -- in deep sleep Wi-Fi and the API server
@@ -340,6 +408,7 @@ binary_sensor:
       number: GPIO2
       mode: INPUT_PULLUP
       inverted: true
+      allow_other_uses: true   # also the deep sleep wakeup pin
     # Not "button": that is the name of a loaded integration and reserved.
     id: push_button
     on_multi_click:
@@ -353,12 +422,12 @@ binary_sensor:
           - OFF for at least 0.3s
         then:
           - script.execute: reset_calibration
-      # 1x short -> measure now
+      # 1x short -> measure now, blink the status, stay awake
       - timing:
           - ON for at most 1s
           - OFF for at least 1s
         then:
-          - script.execute: measure_and_sleep
+          - script.execute: on_button_press
 
 switch:
   - platform: template
@@ -472,10 +541,86 @@ script:
       - light.turn_off: yellow_led
       - light.turn_off: green_led
 
+  # Status LED. Normal measurement: the colour 5 s solid. After a button press
+  # (button_pressed): blink for button_blink_s in 250 ms steps --
+  #   green / yellow / red : 500 ms on, 500 ms off
+  #   calibrating          : yellow and green alternating every 500 ms
+  #   sensor error         : red, fast (250 ms on / 250 ms off)
+  - id: led_show_status
+    mode: restart
+    then:
+      - if:
+          condition:
+            lambda: 'return id(button_pressed);'
+          then:
+            - lambda: 'id(button_pressed) = false; id(led_tick) = 0;'
+            - repeat:
+                count: !lambda 'return ${button_blink_s} * 4;'
+                then:
+                  - lambda: |-
+                      int t = id(led_tick)++;
+                      bool first_half = (t % 4) < 2;
+                      id(red_led).turn_off().perform();
+                      id(yellow_led).turn_off().perform();
+                      id(green_led).turn_off().perform();
+                      switch (id(led_state)) {
+                        case 1: if (first_half) id(green_led).turn_on().perform(); break;
+                        case 2: if (first_half) id(yellow_led).turn_on().perform(); break;
+                        case 3: if (first_half) id(red_led).turn_on().perform(); break;
+                        case 4:
+                          if (first_half) id(yellow_led).turn_on().perform();
+                          else id(green_led).turn_on().perform();
+                          break;
+                        case 5: if (t % 2 == 0) id(red_led).turn_on().perform(); break;
+                        default: break;
+                      }
+                  - delay: 250ms
+          else:
+            - lambda: |-
+                // .perform() is mandatory -- turn_on() alone only builds a call
+                switch (id(led_state)) {
+                  case 1: id(green_led).turn_on().perform(); break;
+                  case 2: case 4: id(yellow_led).turn_on().perform(); break;
+                  case 3: case 5: id(red_led).turn_on().perform(); break;
+                  default: break;
+                }
+            - delay: 5s
+      - script.execute: all_leds_off
+
+  # Open (or extend) the button wake window of button_awake_s.
+  - id: open_button_window
+    then:
+      - lambda: |-
+          id(wake_by_button) = true;
+          uint32_t until = millis() + ${button_awake_s} * 1000UL;
+          if (until > id(wake_window_until_ms)) id(wake_window_until_ms) = until;
+          ESP_LOGI("button", "Button: awake for %u s", (unsigned) ${button_awake_s});
+
+  # Button wake-up from deep sleep (on_boot): no measurement is running yet,
+  # so window and blink flag can be set right away.
+  - id: register_button_press
+    then:
+      - script.execute: open_button_window
+      - lambda: 'id(button_pressed) = true;'
+
+  # Button pressed while awake: measure again and blink the FRESH result.
+  # 1. Open the window first, so a measurement already in flight does not
+  #    send the device to sleep when it finishes.
+  # 2. Only set the blink flag AFTER waiting for it -- set earlier, the
+  #    in-flight measurement would consume it and the fresh one would show a
+  #    solid LED instead (found in review of PR #30).
+  - id: on_button_press
+    then:
+      - script.execute: open_button_window
+      - script.wait: measure_and_sleep
+      - lambda: 'id(button_pressed) = true;'
+      - script.execute: measure_and_sleep
+
   - id: measure_and_sleep
     then:
       - logger.log: "=== MEASURE START ==="
       - script.execute: all_leds_off
+      - lambda: 'id(led_state) = 0;'
       # Here as well, not only in on_boot: this script is also called by the
       # 60 s timer and the push button. Idempotent, costs nothing.
       - script.execute: sensor_hw_init
@@ -563,6 +708,7 @@ script:
           auto &s = id(soil_samples);
           if (s.empty()) {
             ESP_LOGE("soil", "No valid ADC samples!");
+            id(led_state) = 5;
             return;
           }
           std::sort(s.begin(), s.end());
@@ -586,7 +732,7 @@ script:
             id(cal_wet_sensor).publish_state(id(wet_value));
             id(cal_span_sensor).publish_state(id(dry_value) - id(wet_value));
             id(next_sleep_sensor).publish_state(${sleep_error_min});
-            id(red_led).turn_on().perform();   // .perform() is mandatory!
+            id(led_state) = 5;
             id(deep_sleep_control).set_sleep_duration(${sleep_error_min} * 60 * 1000UL);
             return;
           } else if (!id(cal_seeded)) {
@@ -666,7 +812,7 @@ script:
             id(soil_moisture_percent).publish_state(NAN);
             id(soil_status).publish_state(buf);
             id(next_sleep_sensor).publish_state(${sleep_calibrating_min});
-            id(yellow_led).turn_on().perform();
+            id(led_state) = 4;
             id(deep_sleep_control).set_sleep_duration(${sleep_calibrating_min} * 60 * 1000UL);
             return;
           }
@@ -682,15 +828,15 @@ script:
           if (percent < ${threshold_dry}) {
             status = "${state_dry}";
             sleep_min = ${sleep_dry_min};
-            id(red_led).turn_on().perform();
+            id(led_state) = 3;
           } else if (percent < ${threshold_wet}) {
             status = "${state_almost_dry}";
             sleep_min = ${sleep_almost_dry_min};
-            id(yellow_led).turn_on().perform();
+            id(led_state) = 2;
           } else {
             status = "${state_normal}";
             sleep_min = ${sleep_wet_min};
-            id(green_led).turn_on().perform();
+            id(led_state) = 1;
           }
           id(soil_status).publish_state(status);
           id(next_sleep_sensor).publish_state(sleep_min);
@@ -701,9 +847,9 @@ script:
 
           id(deep_sleep_control).set_sleep_duration(sleep_min * 60 * 1000UL);
 
-      # Show the LED briefly, then off (otherwise it stays lit in USB mode)
-      - delay: 5s
-      - script.execute: all_leds_off
+      # Show the result on the LED: 5 s solid, or blinking after a button press.
+      - script.execute: led_show_status
+      - script.wait: led_show_status
       - delay: 5s          # time for the globals to be written to NVS
 
       - script.execute: decide_sleep
@@ -711,7 +857,7 @@ script:
   # Sleep or stay awake? The order is intentional:
   # 1. USB              -> mains powered, battery irrelevant, always awake
   # 2. local switch     -> explicit user intent, latching
-  # 3. request from HA  -> one-time, time limited window
+  # 3. button / HA      -> one-time, time limited window
   # 4. otherwise        -> sleep
   - id: decide_sleep
     then:
@@ -745,7 +891,8 @@ script:
                   - delay: 500ms
                   - deep_sleep.enter: deep_sleep_control
 
-  # Redeem the requested wake window (OTA or reading logs on battery).
+  # Redeem the wake window (OTA or reading logs on battery), requested from
+  # HA or opened by the push button.
   - id: open_wake_window
     then:
       - lambda: |-
@@ -759,7 +906,8 @@ script:
           if (id(wake_window_until_ms) > now)
             left_min = (id(wake_window_until_ms) - now + 59999UL) / 60000UL;
           char buf[96];
-          snprintf(buf, sizeof(buf), "%s (%u %s)", "${state_awake_request}",
+          snprintf(buf, sizeof(buf), "%s (%u %s)",
+                   id(wake_by_button) ? "${state_awake_button}" : "${state_awake_request}",
                    (unsigned) left_min, "${state_min_left}");
           id(sleep_decision).publish_state(buf);
 
