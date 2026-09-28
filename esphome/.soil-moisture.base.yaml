@@ -161,6 +161,10 @@ time:
 
 deep_sleep:
   id: deep_sleep_control
+  # Safety net (issue #32): every valid measurement sets its own duration. If
+  # the very first boot gets no ADC sample at all, the device would otherwise
+  # sleep without a wake-up timer.
+  sleep_duration: ${sleep_error_min}min
   # The push button wakes the device (GPIO2 is an LP GPIO on the ESP32-C6).
   # KEEP_AWAKE: while the button is held, sleep is deferred instead of waking
   # up again immediately.
@@ -388,6 +392,16 @@ text_sensor:
   - platform: template
     name: "${label_sleep_decision}"
     id: sleep_decision
+    entity_category: diagnostic
+
+  # WHEN the next measurement happens (issue #31), shown by HA as "in 59
+  # minutes" / a clock time. A text sensor with an ISO 8601 UTC string, not a
+  # numeric sensor: sensor values are float32, which resolves a unix time only
+  # to 128 s. Published by decide_sleep.
+  - platform: template
+    name: "${label_next_measurement}"
+    id: next_measurement_sensor
+    device_class: timestamp
     entity_category: diagnostic
 
   # Firmware release (firmware_version, published in on_boot) and the ESPHome
@@ -874,6 +888,21 @@ script:
 
       - script.execute: decide_sleep
 
+  # Publish "next measurement at" = now + seconds. Needs the HA clock; without
+  # it the value stays unknown instead of showing an invented time.
+  - id: publish_next_measurement
+    parameters:
+      seconds: int
+    then:
+      - lambda: |-
+          auto t = id(ha_time).now();
+          if (t.is_valid()) {
+            auto next = ESPTime::from_epoch_utc(t.timestamp + seconds);
+            id(next_measurement_sensor).publish_state(next.strftime("%Y-%m-%dT%H:%M:%SZ"));
+          } else {
+            id(next_measurement_sensor).publish_state("");   // HA: unknown
+          }
+
   # Sleep or stay awake? The order is intentional:
   # 1. USB              -> mains powered, battery irrelevant, always awake
   # 2. local switch     -> explicit user intent, latching
@@ -888,6 +917,10 @@ script:
             - lambda: |-
                 id(sleep_decision).publish_state(
                     id(usb_powered) ? "${state_awake_usb}" : "${state_awake_switch}");
+            # Awake: the 60 s interval measures next.
+            - script.execute:
+                id: publish_next_measurement
+                seconds: 60
             - logger.log:
                 format: "Staying awake (usb=%d, override=%d) -- re-measuring every 60s"
                 args: ['id(usb_powered)', 'id(disable_sleep)']
@@ -905,8 +938,18 @@ script:
                     return id(ha_stay_awake).has_state() && id(ha_stay_awake).state;
                 then:
                   - script.execute: open_wake_window
+                  - script.execute:
+                      id: publish_next_measurement
+                      seconds: 60
                 else:
                   - lambda: 'id(sleep_decision).publish_state("${state_sleeping}");'
+                  # Asleep: the timer wakes it after the chosen duration. Without a
+                  # valid measurement the deep_sleep default (sleep_error_min) applies.
+                  - script.execute:
+                      id: publish_next_measurement
+                      seconds: !lambda |-
+                        float m = id(next_sleep_sensor).state;
+                        return std::isnan(m) ? ${sleep_error_min} * 60 : (int) (m * 60);
                   # Give the state time to reach HA before Wi-Fi goes down.
                   - delay: 500ms
                   - deep_sleep.enter: deep_sleep_control

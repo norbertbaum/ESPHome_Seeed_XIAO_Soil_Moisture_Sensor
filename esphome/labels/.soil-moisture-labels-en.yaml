@@ -15,6 +15,7 @@ substitutions:
   label_cal_wet: Cal Wet (learned)
   label_cal_span: Cal Span
   label_next_sleep: Next Sleep
+  label_next_measurement: Next Measurement At
   label_battery_voltage: Battery Voltage
   label_battery: Battery %
   label_soil_status: Soil Status
