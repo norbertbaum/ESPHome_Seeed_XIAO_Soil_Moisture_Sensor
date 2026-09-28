@@ -20,7 +20,6 @@ substitutions:
   label_soil_status: Bodenstatus
   label_power_mode: Stromversorgung
   label_sleep_decision: Schlafentscheidung
-  label_disable_deep_sleep: Deep Sleep deaktivieren
   label_reset_calibration: Kalibrierung zurücksetzen
   label_firmware: Firmware
   label_esphome_version: ESPHome-Version

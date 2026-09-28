@@ -151,7 +151,8 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 ## Substitution contract
 
 - **Required** (no default, config fails without them): `name`,
-  `friendly_name`, `stay_awake_entity`, `api_encryption_key`, and all
+  `friendly_name`, `stay_awake_entity`, `disable_sleep_entity` (since
+  v2.0.0), `api_encryption_key`, and all
   `label_*` / `state_*` keys (from the label file).
 - `firmware_version` defaults to `dev`, see "Releases".
 - `ota_password` and `ap_password` were removed in v1.2.0. Device files that
@@ -216,8 +217,7 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 
 - ESPHome derives an entity's unique id (and its preference hash) from the
   **entity name**. Renaming a label, or switching an existing device to another
-  language, creates new entities in HA. The old ones are orphaned with their history,
-  and the *Disable Deep Sleep* switch loses its restored state.
+  language, creates new entities in HA. The old ones are orphaned with their history.
 - The **English labels are byte-identical to the original single-device
   firmware** ("Soil Moisture %", "Battery %", …) so the first sensor
   (`bodenfeuchte-8f63bc`) keeps its entities. Do not "clean them up".
@@ -272,14 +272,24 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 
 ## Sleep decision and the wake-window mailbox
 
-- Order: USB → local switch → HA request → sleep. See `decide_sleep`.
+- Order: USB → `disable_sleep_entity` → button / HA wake window → sleep. See `decide_sleep`.
+- **Everything that must work while the device sleeps has to live in HA, not
+  in the device** (issue #36). ESPHome has no queue for sleeping devices, so a
+  command to a device entity fails with `Authenticated connection not ready yet
+  … HOST_RESOLVED`. That is why *Disable Deep Sleep* was moved from a template
+  switch on the device to the HA helper `disable_sleep_entity` in v2.0.0 (a major
+  bump, because it is a new required substitution). The device mirrors it into the
+  `disable_sleep` global through the helper's `on_state`, reads it on every
+  wake-up, and treats a missing helper as off (fail-safe).
+- The wake-up wait covers both helpers (`has_state()` of `ha_stay_awake` and
+  `ha_disable_sleep`, 2 s timeout, skipped on USB). A missing helper costs up
+  to 2 s per battery wake-up, so create both.
 - A sleeping ESP32 has Wi-Fi and the API off. HA cannot push anything. The device
   subscribes to `stay_awake_entity` (a `homeassistant` binary sensor) and
   reads it after connecting.
 - `api.connected` does **not** mean subscribed states have arrived. There is
   therefore a `wait_until has_state()` with a 2 s timeout, and it runs only
-  when the answer can change the decision (not on USB, not with the local
-  override). Measured awake time per cycle: 7.6 s with an unconditional 5 s wait,
+  when the answer can change the decision (not on USB). Measured awake time per cycle: 7.6 s with an unconditional 5 s wait,
   2.6 s now.
 - The window length (`wake_budget_min`) is the hard battery guard. When it
   expires the device sleeps even if the helper is still on.

@@ -6,6 +6,7 @@ substitutions:
   name: soil-test-en
   friendly_name: Soil Test EN
   stay_awake_entity: input_boolean.soil_test_en_stay_awake
+  disable_sleep_entity: input_boolean.soil_test_en_disable_sleep
   api_encryption_key: !secret test_api_key
 
 packages:

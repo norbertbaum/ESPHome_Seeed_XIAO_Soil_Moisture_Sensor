@@ -21,7 +21,6 @@ substitutions:
   label_soil_status: Soil Status
   label_power_mode: Power Mode
   label_sleep_decision: Sleep Decision
-  label_disable_deep_sleep: Disable Deep Sleep
   label_reset_calibration: Reset Calibration
   label_firmware: Firmware
   label_esphome_version: ESPHome Version

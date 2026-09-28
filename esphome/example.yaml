@@ -9,7 +9,7 @@
 #   wifi_ssid, wifi_password                    (shared by all devices)
 #   soil_1_api_key                              (one per device)
 #
-# Needed in Home Assistant: an input_boolean per device, see
+# Needed in Home Assistant: two input_booleans per device, see
 # homeassistant/soil_moisture_helpers.yaml in the repository.
 # =============================================================================
 
@@ -29,6 +29,11 @@ substitutions:
   # battery). One per device -- a shared helper would be cleared by whichever
   # device wakes up first.
   stay_awake_entity: input_boolean.soil_moisture_1_stay_awake
+
+  # Latching "do not sleep" helper in HA, also one per device. Switch it on
+  # (even while the sensor sleeps) and the sensor stays awake from its next
+  # wake-up until you switch it off again. Mind the battery.
+  disable_sleep_entity: input_boolean.soil_moisture_1_disable_sleep
 
   # Per-device credentials. The API key must be 32 bytes, base64 encoded
   # (the Device Builder generates one when you create a new device). It also
