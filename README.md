@@ -208,6 +208,7 @@ The label file sets both the entity names and the status texts (*Dry* /
 | Cal Wet (learned) | Kalibrierung feucht (gelernt) | diagnostic | learned wet limit (V) |
 | Cal Span | Kalibrierung Hub | diagnostic | dry − wet (V) |
 | Next Sleep | Nächste Messung in | diagnostic | chosen sleep duration (min) |
+| Next Measurement At | Nächste Messung um | diagnostic | timestamp of the next measurement, shown by HA as "in 59 minutes" |
 | Power Mode | Stromversorgung | diagnostic | USB / battery |
 | Sleep Decision | Schlafentscheidung | diagnostic | why it sleeps or stays awake |
 | Disable Deep Sleep | Deep Sleep deaktivieren | switch | latching "stay awake", survives deep sleep |

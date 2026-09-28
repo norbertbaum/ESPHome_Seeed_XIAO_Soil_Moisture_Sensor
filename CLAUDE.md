@@ -324,6 +324,23 @@ A clean compile takes about 2 minutes. Reference sizes are in the
   spurious wake-ups and drain the battery. Watch *Sleep Decision* and the
   wake-up log after flashing.
 
+## Next measurement timestamp (issues #31, #32)
+
+- *Next Measurement At* is a **text** sensor with `device_class: timestamp`
+  holding an ISO 8601 UTC string (`2026-09-28T19:40:00Z`). HA shows it
+  relative ("in 59 minutes"), and because it is an absolute time it stays
+  correct while the device sleeps. It is not a numeric sensor on purpose:
+  ESPHome sensor values are float32, which resolves a unix timestamp
+  (~1.8e9) only to 128 s.
+- `decide_sleep` publishes it through `publish_next_measurement`: asleep →
+  now + `next_sleep_sensor` minutes; awake (USB, switch, wake window) → now + 60 s
+  (the interval timer). The clock comes from `ha_time`. Unsynced → empty string
+  (HA: unknown), never an invented time.
+- The older *Next Sleep* entity (duration) stays unchanged for its history.
+- `deep_sleep: sleep_duration: ${sleep_error_min}min` is a safety net
+  (#32). A first boot without any ADC sample would otherwise sleep with
+  no wake-up timer. The timestamp falls back to the same value.
+
 ## Measurement loop: never block
 
 - Never call `delay()` inside a lambda. ESPHome runs lambdas on the main loop
