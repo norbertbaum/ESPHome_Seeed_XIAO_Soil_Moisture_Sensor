@@ -282,9 +282,12 @@ A clean compile takes about 2 minutes. Reference sizes are in the
   (`ESP_SLEEP_WAKEUP_GPIO`, and `EXT1` as a fallback). That boot is then
   treated as a press: `register_button_press` sets `button_pressed` and
   opens a `button_awake_s` window (seconds, like `button_blink_s`), and the normal `measure_and_sleep` follows.
-- A press **while awake** runs `on_button_press`: it registers the press,
-  waits for a running `measure_and_sleep` (single mode would otherwise drop the call),
-  then measures again.
+- A press **while awake** runs `on_button_press`. It opens the window first,
+  so an in-flight measurement does not put the device to sleep. It then waits for a running
+  `measure_and_sleep` (single mode would otherwise drop the call) and sets
+  `button_pressed` only **after** that wait, then measures again. Set earlier,
+  the in-flight measurement would consume the flag, and the fresh result would
+  show a solid LED (review finding on PR #30).
 - The measurement no longer switches LEDs. It sets `led_state` (0 none, 1 wet,
   2 almost dry, 3 dry, 4 calibrating, 5 error). `led_show_status` shows it
   5 s solid, or blinking for `button_blink_s` after a press. Calibrating and

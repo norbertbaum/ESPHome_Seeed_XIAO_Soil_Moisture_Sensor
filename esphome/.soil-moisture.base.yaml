@@ -587,25 +587,33 @@ script:
             - delay: 5s
       - script.execute: all_leds_off
 
-  # Mark a button press: the next status display blinks, and a wake window of
-  # button_awake_s opens (extends a shorter one that is already open).
-  - id: register_button_press
+  # Open (or extend) the button wake window of button_awake_s.
+  - id: open_button_window
     then:
       - lambda: |-
-          id(button_pressed) = true;
           id(wake_by_button) = true;
           uint32_t until = millis() + ${button_awake_s} * 1000UL;
           if (until > id(wake_window_until_ms)) id(wake_window_until_ms) = until;
-          ESP_LOGI("button", "Button: blinking status, awake for %u s",
-                   (unsigned) ${button_awake_s});
+          ESP_LOGI("button", "Button: awake for %u s", (unsigned) ${button_awake_s});
 
-  # Button pressed while awake: measure again and show the fresh result. A
-  # running measurement is allowed to finish first (the script is single
-  # mode), then a new one runs with the blinking display.
+  # Button wake-up from deep sleep (on_boot): no measurement is running yet,
+  # so window and blink flag can be set right away.
+  - id: register_button_press
+    then:
+      - script.execute: open_button_window
+      - lambda: 'id(button_pressed) = true;'
+
+  # Button pressed while awake: measure again and blink the FRESH result.
+  # 1. Open the window first, so a measurement already in flight does not
+  #    send the device to sleep when it finishes.
+  # 2. Only set the blink flag AFTER waiting for it -- set earlier, the
+  #    in-flight measurement would consume it and the fresh one would show a
+  #    solid LED instead (found in review of PR #30).
   - id: on_button_press
     then:
-      - script.execute: register_button_press
+      - script.execute: open_button_window
       - script.wait: measure_and_sleep
+      - lambda: 'id(button_pressed) = true;'
       - script.execute: measure_and_sleep
 
   - id: measure_and_sleep
