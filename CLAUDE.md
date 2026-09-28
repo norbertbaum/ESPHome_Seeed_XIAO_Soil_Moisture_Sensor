@@ -165,6 +165,28 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 - Adding a label: add it to **both** label files and use it as `"${key}"` in
   the base package. The check script fails otherwise.
 
+## OTA rollback: confirm the firmware as soon as HA is connected (issue #33)
+
+- ESP-IDF app rollback is on by default (`esp32: advanced: enable_ota_rollback`).
+  A freshly flashed image boots in `PENDING_VERIFY` state and must be confirmed.
+  Otherwise the bootloader starts the previous image after the next reset.
+  ESPHome confirms in `safe_mode` after `boot_is_good_after` (60 s) or on an
+  orderly shutdown, which includes deep sleep (`boot_is_good_on_shutdown`).
+- **Trap on this board:** unplugging USB resets it even with a cell inserted.
+  Testing right after an update and unplugging within the first minute
+  silently rolled v1.3.0 back to v1.2.1. The serial boot log showed
+  `OTA rollback detected! Rolled back from partition 'app1' -- The device
+  reset before the boot was marked successful`.
+- Fix: `safe_mode: id: safe_mode_control`, and `measure_and_sleep` calls
+  `mark_successful()` once per boot right after `api.connected`. Once HA is
+  reachable, the next OTA is possible, so rollback protection has done its job.
+  Firmware that crashes before connecting is still rolled back.
+- **How to diagnose a suspected rollback:** the *Firmware* entity or the HA device info
+  shows the old version, and the Device Builder log shows the device announcing an old
+  `config_hash`. The serial boot log (`safe_mode` lines) confirms it. The
+  device must be awake for that: press RESET, because USB does not wake it from
+  deep sleep, and neither does the button on firmware before v1.3.0.
+
 ## OTA encryption and the web_server hole (issues #19, #20)
 
 - `ota: - platform: esphome` uses `encryption: {}`. ESPHome ≥ 2026.9 fills in

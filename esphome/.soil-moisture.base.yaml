@@ -131,6 +131,16 @@ ota:
   - platform: esphome
     encryption: {}
 
+# OTA rollback protection (ESP-IDF, on by default): a new firmware must be
+# marked good, otherwise the bootloader starts the previous one after the
+# next reset. ESPHome does that after boot_is_good_after (60 s) or on deep
+# sleep. Unplugging USB resets this board, so a quick test after an update
+# used to roll it back silently (issue #33). measure_and_sleep therefore
+# marks the boot good as soon as the HA API is connected -- from then on a
+# further OTA is possible, which is what the protection is for.
+safe_mode:
+  id: safe_mode_control
+
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
@@ -660,6 +670,16 @@ script:
               api.connected:
           then:
             - logger.log: "No API connection -- measuring anyway, then sleeping"
+          else:
+            # Connected to HA: this firmware works well enough to receive the
+            # next OTA, so confirm it now instead of after 60 s (issue #33).
+            - lambda: |-
+                static bool confirmed = false;   // once per boot is enough
+                if (!confirmed) {
+                  id(safe_mode_control).mark_successful();
+                  confirmed = true;
+                  ESP_LOGI("ota", "API connected -- firmware confirmed (no rollback)");
+                }
 
       # Wait for the requested wake window from HA -- but ONLY if the answer
       # can change the decision. On USB or with the local override we stay
