@@ -24,17 +24,27 @@ credentials.
 
 ## Quick start
 
-### 1. Home Assistant: one helper per sensor
+### 1. Home Assistant: two helpers per sensor
 
 Add [`homeassistant/soil_moisture_helpers.yaml`](homeassistant/soil_moisture_helpers.yaml)
 to your `configuration.yaml` (or copy the entries you need), then
 *Developer tools → YAML → Input booleans* to reload.
 
+| Helper | Effect on the next wake-up |
+|---|---|
+| `…_stay_awake` | one-time wake window of 10 min, the sensor switches it off again |
+| `…_disable_sleep` | the sensor stays awake **until you switch it off** (mind the battery) |
+
+Both can be switched while the sensor sleeps. A sleeping sensor cannot receive
+anything, so it reads the helpers every time it wakes up. Controls that live on
+the sensor itself (for example *Reset Calibration*) only work while it is
+awake: press the button on the sensor first, or use the wake window.
+
 > Create the helper in YAML, not in the UI. The UI derives the entity id from
 > the *name*: "Bodenfeuchte 1 wach bleiben" becomes
 > `input_boolean.bodenfeuchte_1_wach_bleiben`. If the id does not match the device's
-> `stay_awake_entity`, the device silently never sees the request. In YAML,
-> the key is the entity id.
+> `stay_awake_entity` / `disable_sleep_entity`, the device silently never sees
+> it. In YAML, the key is the entity id.
 
 ### 2. ESPHome Device Builder: secrets
 
@@ -64,6 +74,7 @@ substitutions:
   name: soil-moisture-1
   friendly_name: Soil Moisture 1
   stay_awake_entity: input_boolean.soil_moisture_1_stay_awake
+  disable_sleep_entity: input_boolean.soil_moisture_1_disable_sleep
   api_encryption_key: !secret soil_1_api_key
 
 packages:
@@ -122,6 +133,20 @@ been confirmed. Since v1.3.1 the firmware is confirmed as soon as it has connect
 Home Assistant. Before that, confirmation took 60 s, so unplugging USB too early
 silently brought back the old version.
 
+### Upgrading to v2.0.0
+
+v2.0.0 replaces the on-device switch *Disable Deep Sleep* with an HA helper. HA
+could not reach the switch while the sensor slept (`Authenticated connection not
+ready yet … HOST_RESOLVED`), and the sensor sleeps almost all the time.
+
+1. Create the helper in HA, for example `input_boolean.soil_moisture_2_disable_sleep`
+   (see [`soil_moisture_helpers.yaml`](homeassistant/soil_moisture_helpers.yaml)).
+2. Add `disable_sleep_entity: input_boolean.…_disable_sleep` to the device
+   file's `substitutions:`. **The config does not validate without it.**
+3. Set `firmware_version: v2.0.0`, then *Install*.
+4. Delete the orphaned entity `switch.…_disable_deep_sleep` /
+   `switch.…_deep_sleep_deaktivieren` in HA. It shows as unavailable after the update.
+
 ### OTA security
 
 - OTA uploads are **encrypted and authenticated with the device's API key**
@@ -150,6 +175,7 @@ silently brought back the old version.
 | `name` | `soil-moisture-1` | Hostname, unique, `a-z 0-9 -` |
 | `friendly_name` | `Soil Moisture 1` | Device name in Home Assistant |
 | `stay_awake_entity` | `input_boolean.soil_moisture_1_stay_awake` | Wake-window helper, **one per device** |
+| `disable_sleep_entity` | `input_boolean.soil_moisture_1_disable_sleep` | Latching "do not sleep" helper, **one per device** (since v2.0.0) |
 | `api_encryption_key` | `!secret soil_1_api_key` | Native API encryption key |
 
 `wifi_ssid` / `wifi_password` are read from the Device Builder's `secrets.yaml`.
@@ -211,7 +237,6 @@ The label file sets both the entity names and the status texts (*Dry* /
 | Next Measurement At | Nächste Messung um | diagnostic | timestamp of the next measurement, shown by HA as "in 59 minutes" |
 | Power Mode | Stromversorgung | diagnostic | USB / battery |
 | Sleep Decision | Schlafentscheidung | diagnostic | why it sleeps or stays awake |
-| Disable Deep Sleep | Deep Sleep deaktivieren | switch | latching "stay awake", survives deep sleep |
 | Reset Calibration | Kalibrierung zurücksetzen | button | discard learned range |
 | Firmware | Firmware | diagnostic | running release (`firmware_version`) |
 | ESPHome Version | ESPHome-Version | diagnostic | ESPHome version the firmware was built with |
@@ -225,7 +250,7 @@ The device decides on **every boot** how to behave. The rules are checked in thi
 | Detected | Behaviour |
 |---|---|
 | USB host connected | No deep sleep. Re-measures every 60 s, logs and OTA available. |
-| *Disable Deep Sleep* switch on | Stays awake on battery too (latching, until switched off). |
+| `disable_sleep_entity` helper on in HA | Stays awake on battery too, from the next wake-up until switched off. |
 | Push button pressed | Measures, blinks the status, then a **wake window** of `button_awake_s`. |
 | Stay-awake helper on in HA | **One-time wake window** of `wake_budget_min` on the next wake-up. |
 | Otherwise | Measure, then deep sleep for a moisture-dependent duration. |
@@ -350,7 +375,7 @@ esphome/
   labels/.soil-moisture-labels-de.yaml German entity names and states
   example.yaml                         device file for the Device Builder
 homeassistant/
-  soil_moisture_helpers.yaml           input_boolean helpers (one per device)
+  soil_moisture_helpers.yaml           input_boolean helpers (two per device)
 tests/
   soil-test-en.yaml, soil-test-de.yaml local-include configs for CI / local builds
   secrets.yaml                         dummy secrets for those configs

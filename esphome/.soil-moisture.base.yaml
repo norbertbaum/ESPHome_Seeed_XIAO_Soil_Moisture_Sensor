@@ -5,7 +5,7 @@
 # comes in through substitutions from the device file (see example.yaml):
 #
 #   required:  name, friendly_name, stay_awake_entity,
-#              api_encryption_key
+#              disable_sleep_entity, api_encryption_key
 #   labels:    one of labels/.soil-moisture-labels-{de,en}.yaml
 #   optional:  the tuning defaults in the substitutions block below
 #
@@ -218,7 +218,9 @@ globals:
     restore_value: no
     initial_value: "false"
 
-  - id: disable_sleep        # manual latching override from HA
+  # Mirrors the HA helper disable_sleep_entity (set by its binary sensor).
+  # Not stored: it is read from HA again on every wake-up.
+  - id: disable_sleep
     type: bool
     restore_value: no
     initial_value: "false"
@@ -427,6 +429,16 @@ binary_sensor:
     id: ha_stay_awake
     entity_id: ${stay_awake_entity}
 
+  # Latching "do not sleep" (issue #36). It lives in HA, not in the device, so
+  # it can be switched while the device sleeps and takes effect on the next
+  # wake-up -- a device-side switch cannot be reached in deep sleep. Missing
+  # helper or no HA -> no state -> the device sleeps (fail-safe).
+  - platform: homeassistant
+    id: ha_disable_sleep
+    entity_id: ${disable_sleep_entity}
+    on_state:
+      - lambda: 'id(disable_sleep) = x;'
+
   - platform: gpio
     pin:
       number: GPIO2
@@ -452,20 +464,6 @@ binary_sensor:
           - OFF for at least 1s
         then:
           - script.execute: on_button_press
-
-switch:
-  - platform: template
-    name: "${label_disable_deep_sleep}"
-    id: disable_sleep_switch
-    optimistic: true
-    # NOT ALWAYS_ON: that runs turn_on_action on EVERY boot -> never sleeps.
-    # RESTORE_DEFAULT_OFF: off by default, but if switched on in HA it
-    # survives deep sleep (NVS) -- a latching OTA window on battery.
-    restore_mode: RESTORE_DEFAULT_OFF
-    turn_on_action:
-      - lambda: 'id(disable_sleep) = true;'
-    turn_off_action:
-      - lambda: 'id(disable_sleep) = false;'
 
 button:
   # Reset from HA too, not only via 3x button press on the device.
@@ -695,21 +693,21 @@ script:
                   ESP_LOGI("ota", "API connected -- firmware confirmed (no rollback)");
                 }
 
-      # Wait for the requested wake window from HA -- but ONLY if the answer
-      # can change the decision. On USB or with the local override we stay
-      # awake anyway.
+      # Wait for the two HA helpers (wake window request, disable sleep) --
+      # but ONLY if the answer can change the decision: on USB we stay awake
+      # anyway.
       #
       # api.connected only means "connection is up"; the subscribed HA states
       # arrive shortly after. Without this wait the sleep decision would race
       # against that message. 2 s is plenty (HA answers within milliseconds)
-      # and limits the cost if the helper does not exist in HA.
+      # and limits the cost if a helper does not exist in HA.
       - if:
           condition:
-            lambda: 'return !id(usb_powered) && !id(disable_sleep);'
+            lambda: 'return !id(usb_powered);'
           then:
             - wait_until:
                 condition:
-                  lambda: 'return id(ha_stay_awake).has_state();'
+                  lambda: 'return id(ha_stay_awake).has_state() && id(ha_disable_sleep).has_state();'
                 timeout: 2s
 
       - delay: 2s
@@ -905,7 +903,7 @@ script:
 
   # Sleep or stay awake? The order is intentional:
   # 1. USB              -> mains powered, battery irrelevant, always awake
-  # 2. local switch     -> explicit user intent, latching
+  # 2. HA helper        -> disable_sleep_entity, explicit intent, latching
   # 3. button / HA      -> one-time, time limited window
   # 4. otherwise        -> sleep
   - id: decide_sleep

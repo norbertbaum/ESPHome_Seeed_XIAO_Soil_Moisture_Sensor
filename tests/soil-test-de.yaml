@@ -4,6 +4,7 @@ substitutions:
   name: soil-test-de
   friendly_name: Bodenfeuchte Test DE
   stay_awake_entity: input_boolean.soil_test_de_stay_awake
+  disable_sleep_entity: input_boolean.soil_test_de_disable_sleep
   api_encryption_key: !secret test_api_key
   # Left over from <= v1.1.0 device files: must stay harmless (unused).
   ota_password: !secret test_ota_password

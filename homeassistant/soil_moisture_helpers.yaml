@@ -1,22 +1,40 @@
-# Home Assistant: one "stay awake" mailbox per sensor.
+# Home Assistant: two helpers per sensor.
 #
-# Add to configuration.yaml (or a file included from it), then
+#   <prefix>_stay_awake     one-time wake window (10 min) on the next wake-up;
+#                           the sensor switches it off again by itself
+#   <prefix>_disable_sleep  latching: the sensor stays awake from its next
+#                           wake-up until you switch it off (mind the battery)
+#
+# Both can be switched while the sensor sleeps -- it reads them when it wakes
+# up. Add to configuration.yaml (or a file included from it), then
 # Developer tools -> YAML -> reload "Input booleans".
 #
 # The key IS the entity id (input_boolean.<key>) and must match the
-# stay_awake_entity substitution of the device. Creating the helper via the UI
-# derives the entity id from the NAME instead -- a typo there means the
-# device silently never sees the request.
+# stay_awake_entity / disable_sleep_entity substitutions of the device.
+# Creating the helper via the UI derives the entity id from the NAME instead
+# -- a mismatch means the device silently never sees it.
 input_boolean:
   soil_moisture_1_stay_awake:
     name: Soil Moisture 1 stay awake
     icon: mdi:sleep-off
+  soil_moisture_1_disable_sleep:
+    name: Soil Moisture 1 disable deep sleep
+    icon: mdi:power-sleep
   soil_moisture_2_stay_awake:
     name: Soil Moisture 2 stay awake
     icon: mdi:sleep-off
+  soil_moisture_2_disable_sleep:
+    name: Soil Moisture 2 disable deep sleep
+    icon: mdi:power-sleep
   soil_moisture_3_stay_awake:
     name: Soil Moisture 3 stay awake
     icon: mdi:sleep-off
+  soil_moisture_3_disable_sleep:
+    name: Soil Moisture 3 disable deep sleep
+    icon: mdi:power-sleep
   soil_moisture_4_stay_awake:
     name: Soil Moisture 4 stay awake
     icon: mdi:sleep-off
+  soil_moisture_4_disable_sleep:
+    name: Soil Moisture 4 disable deep sleep
+    icon: mdi:power-sleep
