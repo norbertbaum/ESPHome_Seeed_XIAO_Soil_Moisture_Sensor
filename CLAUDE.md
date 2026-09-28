@@ -281,7 +281,7 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 - A button **wake-up** is detected in `on_boot` via `esp_sleep_get_wakeup_cause()`
   (`ESP_SLEEP_WAKEUP_GPIO`, and `EXT1` as a fallback). That boot is then
   treated as a press: `register_button_press` sets `button_pressed` and
-  opens a `button_awake_min` window, and the normal `measure_and_sleep` follows.
+  opens a `button_awake_s` window (seconds, like `button_blink_s`), and the normal `measure_and_sleep` follows.
 - A press **while awake** runs `on_button_press`: it registers the press,
   waits for a running `measure_and_sleep` (single mode would otherwise drop the call),
   then measures again.

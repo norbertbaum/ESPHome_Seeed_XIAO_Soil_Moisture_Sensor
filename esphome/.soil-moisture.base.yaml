@@ -58,8 +58,8 @@ substitutions:
   # ---- Push button (issue #27) ----------------------------------------------
   # A short press (also from deep sleep: GPIO2 wakes the device) measures,
   # blinks the status colour for button_blink_s and keeps the device awake
-  # for button_awake_min (e.g. for an OTA update).
-  button_awake_min: "5"
+  # for button_awake_s (e.g. for an OTA update). Both in seconds.
+  button_awake_s: "300"
   button_blink_s: "15"
 
   # ---- USB detection settle time (ms) ---------------------------------------
@@ -588,16 +588,16 @@ script:
       - script.execute: all_leds_off
 
   # Mark a button press: the next status display blinks, and a wake window of
-  # button_awake_min opens (extends a shorter one that is already open).
+  # button_awake_s opens (extends a shorter one that is already open).
   - id: register_button_press
     then:
       - lambda: |-
           id(button_pressed) = true;
           id(wake_by_button) = true;
-          uint32_t until = millis() + ${button_awake_min} * 60000UL;
+          uint32_t until = millis() + ${button_awake_s} * 1000UL;
           if (until > id(wake_window_until_ms)) id(wake_window_until_ms) = until;
-          ESP_LOGI("button", "Button: blinking status, awake for %u min",
-                   (unsigned) ${button_awake_min});
+          ESP_LOGI("button", "Button: blinking status, awake for %u s",
+                   (unsigned) ${button_awake_s});
 
   # Button pressed while awake: measure again and show the fresh result. A
   # running measurement is allowed to finish first (the script is single

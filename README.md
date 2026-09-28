@@ -162,7 +162,7 @@ Override any of these in the device's `substitutions:`.
 | `sleep_error_min` | `15` | Sleep after an implausible reading (min) |
 | `sleep_calibrating_min` | `60` | Sleep while the learned span is too small (min) |
 | `wake_budget_min` | `10` | Length of a requested wake window (min) |
-| `button_awake_min` | `5` | Stay awake after a button press (min) |
+| `button_awake_s` | `300` | Stay awake after a button press (s) |
 | `button_blink_s` | `15` | Duration of the blinking status after a button press (s) |
 | `v_min_plausible` | `0.60` | Readings below (V) are rejected: frontend off / short |
 | `v_max_plausible` | `3.20` | Readings above (V) are rejected (ADC end of range) |
@@ -219,7 +219,7 @@ The device decides on **every boot** how to behave. The rules are checked in thi
 |---|---|
 | USB host connected | No deep sleep. Re-measures every 60 s, logs and OTA available. |
 | *Disable Deep Sleep* switch on | Stays awake on battery too (latching, until switched off). |
-| Push button pressed | Measures, blinks the status, then a **wake window** of `button_awake_min`. |
+| Push button pressed | Measures, blinks the status, then a **wake window** of `button_awake_s`. |
 | Stay-awake helper on in HA | **One-time wake window** of `wake_budget_min` on the next wake-up. |
 | Otherwise | Measure, then deep sleep for a moisture-dependent duration. |
 
@@ -297,7 +297,7 @@ compress the scale to a few percent. That is why they are not used.
 ## Push button
 
 - **1× short**: measure now, **blink the status for 15 s**, then **stay awake
-  for 5 min** (`button_blink_s`, `button_awake_min`). This also works on
+  for 5 min** (`button_blink_s`, `button_awake_s`). This also works on
   battery: the button wakes the sensor from deep sleep. The 5 minutes are
   enough to start an OTA update from the Device Builder. *Sleep Decision*
   shows `awake: button (N min left)`.
