@@ -46,6 +46,24 @@ awake: press the button on the sensor first, or use the wake window.
 > `stay_awake_entity` / `disable_sleep_entity`, the device silently never sees
 > it. In YAML, the key is the entity id.
 
+#### Show the controls on the device page
+
+`input_boolean` helpers do not belong to a device, so they do not appear on the
+sensor's device page. Add two **template switches** per sensor that operate the
+helpers and are attached to the device:
+
+*Settings → Devices & services → Helpers → Create helper → Template → Switch*
+
+| Field | *Deep Sleep deaktivieren* / *Disable Deep Sleep* | *Wach bleiben (einmalig)* / *Stay awake (once)* |
+|---|---|---|
+| State | `{{ is_state('input_boolean.soil_moisture_1_disable_sleep', 'on') }}` | `{{ is_state('input_boolean.soil_moisture_1_stay_awake', 'on') }}` |
+| Actions on turn on | `input_boolean.turn_on` on the helper | `input_boolean.turn_on` on the helper |
+| Actions on turn off | `input_boolean.turn_off` on the helper | `input_boolean.turn_off` on the helper |
+| Device | the sensor | the sensor |
+
+They then show up under *Controls* on the device page and work while the
+sensor sleeps, because they only switch the helper in HA.
+
 ### 2. ESPHome Device Builder: secrets
 
 In `/config/esphome/secrets.yaml`:
@@ -144,8 +162,11 @@ ready yet … HOST_RESOLVED`), and the sensor sleeps almost all the time.
 2. Add `disable_sleep_entity: input_boolean.…_disable_sleep` to the device
    file's `substitutions:`. **The config does not validate without it.**
 3. Set `firmware_version: v2.0.0`, then *Install*.
-4. Delete the orphaned entity `switch.…_disable_deep_sleep` /
-   `switch.…_deep_sleep_deaktivieren` in HA. It shows as unavailable after the update.
+4. The old switch entity `switch.…_disable_deep_sleep` /
+   `switch.…_deep_sleep_deaktivieren` is removed by the ESPHome integration
+   during the update. There is nothing to delete by hand.
+5. Optional: put the controls back on the device page, see
+   [Show the controls on the device page](#show-the-controls-on-the-device-page).
 
 ### OTA security
 
