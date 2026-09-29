@@ -281,6 +281,11 @@ A clean compile takes about 2 minutes. Reference sizes are in the
   bump, because it is a new required substitution). The device mirrors it into the
   `disable_sleep` global through the helper's `on_state`, reads it on every
   wake-up, and treats a missing helper as off (fail-safe).
+- The ESPHome integration removes the old switch entity by itself on the
+  update to v2.0.0. Helpers do not belong to a device and are therefore missing from the device
+  page. The README recommends two HA **template switches** attached to the
+  device (tested on unit 2, issue #38), and this stays an HA-side setup
+  step, not firmware.
 - The wake-up wait covers both helpers (`has_state()` of `ha_stay_awake` and
   `ha_disable_sleep`, 2 s timeout, skipped on USB). A missing helper costs up
   to 2 s per battery wake-up, so create both.
