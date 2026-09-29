@@ -351,6 +351,17 @@ sensor:
     update_interval: never
     entity_category: diagnostic
 
+  # Wi-Fi signal strength (issue #40). Read once per measurement right after the
+  # API is connected (update_interval: never -- the default 60 s poll would
+  # never fire on a device that is awake for ~13 s). Tells whether the spot
+  # has enough reception: a lost "goodbye" before deep sleep makes HA show
+  # all values as unavailable until the next wake-up.
+  - platform: wifi_signal
+    name: "${label_wifi_signal}"
+    id: wifi_rssi
+    update_interval: never
+    entity_category: diagnostic
+
   - platform: adc
     id: battery_sensor
     pin: GPIO0
@@ -683,6 +694,8 @@ script:
           then:
             - logger.log: "No API connection -- measuring anyway, then sleeping"
           else:
+            # Wi-Fi signal of this wake-up (issue #40).
+            - component.update: wifi_rssi
             # Connected to HA: this firmware works well enough to receive the
             # next OTA, so confirm it now instead of after 60 s (issue #33).
             - lambda: |-

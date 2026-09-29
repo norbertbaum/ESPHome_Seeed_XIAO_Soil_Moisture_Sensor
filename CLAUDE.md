@@ -286,6 +286,13 @@ A clean compile takes about 2 minutes. Reference sizes are in the
   page. The README recommends two HA **template switches** attached to the
   device (tested on unit 2, issue #38), and this stays an HA-side setup
   step, not firmware.
+- **HA availability of a sleeping device** (`homeassistant/components/esphome/entity.py`):
+  for `has_deep_sleep` devices `available = entry_data.expected_disconnect`.
+  The last values stay visible only if the device signed off cleanly (the API
+  disconnect sent during deep-sleep teardown). A lost goodbye, which happened once on
+  unit 2 right after it was placed in the pot, turns every entity
+  *unavailable* until the next wake-up. *WiFi Signal* (issue #40, updated
+  after `api.connected` in every measurement) is there to spot weak reception.
 - The wake-up wait covers both helpers (`has_state()` of `ha_stay_awake` and
   `ha_disable_sleep`, 2 s timeout, skipped on USB). A missing helper costs up
   to 2 s per battery wake-up, so create both.

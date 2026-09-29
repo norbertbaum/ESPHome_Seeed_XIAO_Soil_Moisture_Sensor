@@ -255,6 +255,7 @@ The label file sets both the entity names and the status texts (*Dry* /
 | Cal Wet (learned) | Kalibrierung feucht (gelernt) | diagnostic | learned wet limit (V) |
 | Cal Span | Kalibrierung Hub | diagnostic | dry − wet (V) |
 | Next Sleep | Nächste Messung in | diagnostic | chosen sleep duration (min) |
+| WiFi Signal | WLAN-Signal | diagnostic | Wi-Fi reception in dBm at the last measurement (see below) |
 | Next Measurement At | Nächste Messung um | diagnostic | timestamp of the next measurement, shown by HA as "in 59 minutes" |
 | Power Mode | Stromversorgung | diagnostic | USB / battery |
 | Sleep Decision | Schlafentscheidung | diagnostic | why it sleeps or stays awake |
@@ -263,6 +264,12 @@ The label file sets both the entity names and the status texts (*Dry* /
 | ESPHome Version | ESPHome-Version | diagnostic | ESPHome version the firmware was built with |
 
 The web interface is available at `http://<name>.local/` while the device is awake.
+
+**WiFi Signal:** above −67 dBm is good and down to −75 dBm still fine. Below −80 dBm,
+messages start to get lost. HA keeps a sleeping sensor's last values only if
+the sensor signs off cleanly before deep sleep. If that goodbye is lost, all its
+entities show *unavailable* until the next wake-up. Frequent *unavailable*
+periods together with a weak signal mean the spot needs better reception.
 
 ## Operating modes
 

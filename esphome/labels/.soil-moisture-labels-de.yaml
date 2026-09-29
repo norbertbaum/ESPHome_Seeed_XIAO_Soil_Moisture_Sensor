@@ -23,6 +23,7 @@ substitutions:
   label_reset_calibration: Kalibrierung zurücksetzen
   label_firmware: Firmware
   label_esphome_version: ESPHome-Version
+  label_wifi_signal: WLAN-Signal
 
   # ---- Zustände der Text-Sensoren ----
   state_dry: Trocken
