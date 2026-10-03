@@ -532,15 +532,19 @@ output:
     id: pwm_output
     frequency: 200kHz
 
-  # Power / switching of the analog part (Seeed reference design).
-  # GPIO14 on, GPIO3 off -- without GPIO14 the battery ADC reads 0 V too.
+  # RF switch of the XIAO ESP32-C6 module (NOT part of the sensor board, which
+  # does not connect GPIO3/GPIO14 at all -- issue #48):
+  #   GPIO3  LOW  = RF switch control enabled
+  #   GPIO14 HIGH = external U.FL antenna, LOW = built-in ceramic antenna
+  # The sensors have an external antenna fitted, as in the Seeed reference
+  # design.
   - platform: gpio
     pin: GPIO3
-    id: gpio_3_output
+    id: rf_switch_enable
 
   - platform: gpio
     pin: GPIO14
-    id: gpio_14_output
+    id: antenna_select_external
 
 light:
   - platform: binary
@@ -578,19 +582,21 @@ interval:
             - script.execute: measure_and_sleep
 
 script:
-  # Arm the analog frontend. Must run after EVERY boot -- including wake-up
-  # from deep sleep, which loses GPIO and LEDC state. Without it the device
-  # measures 0 V and reports a sensor error although the probe is in soil.
+  # Hardware init. Must run after EVERY boot -- including wake-up from deep
+  # sleep, which loses GPIO and LEDC state. Without the 200 kHz excitation the
+  # probe ADC reads ~0 V and the device reports a sensor error although the
+  # probe is in soil.
   - id: sensor_hw_init
     then:
-      - output.turn_off: gpio_3_output
-      - output.turn_on: gpio_14_output
+      # External antenna (see the outputs above).
+      - output.turn_off: rf_switch_enable
+      - output.turn_on: antenna_select_external
       # 68 % duty is the operating point of the Seeed reference design, not a
       # "brightness" -- do not touch.
       - output.set_level:
           id: pwm_output
           level: 68%
-      - logger.log: "Analog frontend on (GPIO14 power, 200kHz PWM @ 68%%)"
+      - logger.log: "Probe excitation on (200kHz PWM @ 68%%), external antenna"
 
   - id: all_leds_off
     then:
