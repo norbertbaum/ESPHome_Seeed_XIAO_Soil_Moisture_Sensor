@@ -54,6 +54,9 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
 - Code comments, commit messages, PRs and docs are in **English**. Only the
   issues and the German label file are German.
 - Commit messages: imperative summary line, body explains why.
+- **Keep comments short.** Comment only what is not obvious from the code
+  (hardware traps, the reasons behind odd values). Do not restate the README in example
+  files. A one-line pointer to the README is enough.
 - When behaviour or a default changes, update the README tables and this
   file in the same PR. Do **not** hand-edit versions or create tags: releases
   are automatic (see "Releases").

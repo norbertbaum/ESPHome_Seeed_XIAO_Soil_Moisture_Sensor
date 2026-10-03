@@ -1,37 +1,13 @@
-# =============================================================================
-# Variant "shared file" for SEVERAL sensors (ESPHome Device Builder).
-#
-# Location -- the Device Builder lists every *.yaml in /config/esphome as a
-# device EXCEPT files starting with a dot. Use either
-#   /config/esphome/common/soil-moisture.yaml      (sub-folder), or
-#   /config/esphome/.soil-moisture-common.yaml     (leading dot)
-# NOT e.g. "__template.yaml": that shows up as a device, fails validation
-# ("Hostnames can only be 31 characters long", because sensor_no is missing)
-# and "Update All" tries to build it. The Device Builder UI cannot create
-# such files -- use the Studio Code Server or File editor app once.
-#
-# Everything shared lives here; a device file only sets sensor_no (see
-# ../soil-moisture-1.yaml). Names and helpers follow a numbering scheme --
-# adapt the scheme to your names, or set the values in the device files.
-#
-# To update all sensors: change firmware_version below, then click "Install"
-# on each sensor in the Device Builder (it does not notice changes in
-# included files). Sleeping sensors are queued until they wake up.
-# =============================================================================
-
+# Shared by all sensors. Location: common/ or a file starting with a dot,
+# see README "Several sensors".
 substitutions:
-  # Release for all sensors -- latest: see the Releases page of the repository.
   firmware_version: vX.Y.Z
-  language: en                                   # en or de
-  # One API key for all sensors. For one key per sensor, set
-  # api_encryption_key in each device file instead (it overrides this one).
+  language: en
   api_encryption_key: !secret soil_api_key
   name: soil-moisture-${sensor_no}
   friendly_name: Soil Moisture ${sensor_no}
   stay_awake_entity: input_boolean.soil_moisture_${sensor_no}_stay_awake
   disable_sleep_entity: input_boolean.soil_moisture_${sensor_no}_disable_sleep
-  # How the Device Builder / HA reach the sensor. Default mDNS; a device file
-  # can override it with a fixed IP.
   use_address: ${name}.local
 
 packages:
@@ -43,7 +19,5 @@ packages:
       - esphome/labels/.soil-moisture-labels-${language}.yaml
       - esphome/.soil-moisture.base.yaml
 
-# Wi-Fi credentials already come from the base package (!secret wifi_ssid /
-# wifi_password); only the address is per device.
 wifi:
   use_address: ${use_address}

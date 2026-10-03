@@ -1,17 +1,7 @@
-# =============================================================================
-# Device file for variant "shared file" -- everything else comes from
-# common/soil-moisture.yaml. Copy it per sensor and change sensor_no.
-# =============================================================================
-
 substitutions:
   sensor_no: "1"
-
-  # Optional overrides for this sensor only:
-  # use_address: 192.168.1.51                  # fixed IP instead of mDNS
-  # firmware_version: v2.1.0                   # another release or a branch
-  # api_encryption_key: !secret soil_1_api_key # own key
+  # Optional overrides, e.g.:
+  # use_address: 192.168.1.51
 
 packages:
   common: !include common/soil-moisture.yaml
-  # with the leading-dot variant instead:
-  # common: !include .soil-moisture-common.yaml

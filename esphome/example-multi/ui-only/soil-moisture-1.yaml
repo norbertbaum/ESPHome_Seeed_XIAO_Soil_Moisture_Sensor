@@ -1,22 +1,9 @@
-# =============================================================================
-# Variant "UI only" for SEVERAL sensors: no extra file needed, everything is
-# edited in the ESPHome Device Builder. The release comes from secrets.yaml,
-# which the Device Builder edits under "Secrets":
-#
-#   soil_firmware_version: vX.Y.Z      # latest: see the Releases page
-#   soil_api_key: "..."                 # one key for all sensors (optional)
-#
-# Every device file is identical except sensor_no. To update all sensors:
-# change soil_firmware_version in the Secrets, then click "Install" on each
-# sensor (the Device Builder does not notice changes in secrets.yaml).
-# Sleeping sensors are queued until they wake up.
-# =============================================================================
-
+# secrets.yaml: soil_firmware_version, soil_api_key -- see README "Several sensors".
 substitutions:
   sensor_no: "1"
   firmware_version: !secret soil_firmware_version
-  language: en                                   # en or de
-  api_encryption_key: !secret soil_api_key       # or a per-sensor secret
+  language: en
+  api_encryption_key: !secret soil_api_key
   name: soil-moisture-${sensor_no}
   friendly_name: Soil Moisture ${sensor_no}
   stay_awake_entity: input_boolean.soil_moisture_${sensor_no}_stay_awake
@@ -30,8 +17,3 @@ packages:
     files:
       - esphome/labels/.soil-moisture-labels-${language}.yaml
       - esphome/.soil-moisture.base.yaml
-
-# Optional: fixed address instead of mDNS (Wi-Fi credentials come from the
-# base package).
-# wifi:
-#   use_address: 192.168.1.51
