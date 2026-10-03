@@ -62,6 +62,13 @@ substitutions:
   button_awake_s: "300"
   button_blink_s: "15"
 
+  # ---- Mains detection (issue #42) -------------------------------------------
+  # Below this cell voltage there is no cell inserted, so the device can only
+  # be powered by USB -- a USB power supply sends no data and is not detected
+  # as a USB host. Then it never sleeps and measures every minute. An empty
+  # NiMH cell still reads ~0.9-1.1 V, well above this.
+  no_battery_below_v: "0.50"
+
   # ---- USB detection settle time (ms) ---------------------------------------
   # ESP-IDF reports "USB connected" right after boot even on battery (see
   # CLAUDE.md). Do not remove or shorten drastically.
@@ -213,6 +220,13 @@ globals:
     initial_value: "false"
 
   # ---- Operating mode ----
+  # Powered by a USB power supply without a cell (issue #42): battery voltage
+  # below no_battery_below_v. Detected in every measurement.
+  - id: mains_powered
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
   - id: usb_powered          # detected on every boot, not stored
     type: bool
     restore_value: no
@@ -375,6 +389,8 @@ sensor:
     filters:
       - lambda: |-
           id(battery_raw).publish_state(x);   // publish the raw value too
+          // No cell inserted (mains powered, issue #42): unknown, not 0 %.
+          if (x < ${no_battery_below_v}) return NAN;
           // Eneloop (NiMH) discharge curve
           if (x >= 1.40) return 100.0;
           else if (x >= 1.35) return 95.0;
@@ -398,6 +414,14 @@ text_sensor:
   - platform: template
     name: "${label_power_mode}"
     id: power_mode
+    entity_category: diagnostic
+
+  # Reset reason of the current boot, plus the wake-up cause after deep sleep
+  # (issue #45). Makes crashes, watchdog resets and brownouts visible in HA.
+  - platform: template
+    name: "${label_last_reset}"
+    id: last_reset
+    icon: mdi:restart
     entity_category: diagnostic
 
   # Why the device stayed awake or went to sleep -- visible in HA without
@@ -548,7 +572,7 @@ interval:
             # never runs again during a requested window and the device
             # would stay awake until the next reset.
             lambda: |-
-              return id(usb_powered) || id(disable_sleep) ||
+              return id(usb_powered) || id(mains_powered) || id(disable_sleep) ||
                      id(wake_window_until_ms) > 0;
           then:
             - script.execute: measure_and_sleep
@@ -663,8 +687,11 @@ script:
       - delay: ${usb_settle_ms}ms
       - lambda: |-
           id(usb_powered) = usb_serial_jtag_is_connected();
-          id(power_mode).publish_state(id(usb_powered) ? "${state_power_usb}"
-                                                       : "${state_power_battery}");
+          // mains_powered is from the previous measurement (re-checked after
+          // the battery reading below); avoids a battery/mains flicker in HA.
+          id(power_mode).publish_state(id(usb_powered)   ? "${state_power_usb}"   :
+                                       id(mains_powered) ? "${state_power_mains}" :
+                                                           "${state_power_battery}");
           const char *reason;
           switch (esp_reset_reason()) {
             case ESP_RST_POWERON:   reason = "POWERON";   break;
@@ -675,9 +702,19 @@ script:
             case ESP_RST_USB:       reason = "USB";       break;
             case ESP_RST_JTAG:      reason = "JTAG";      break;
             case ESP_RST_EXT:       reason = "EXT";       break;
+            case ESP_RST_INT_WDT:   reason = "INT_WDT";   break;
+            case ESP_RST_TASK_WDT:  reason = "TASK_WDT";  break;
+            case ESP_RST_WDT:       reason = "WDT";       break;
             default:                reason = "OTHER";     break;
           }
-          ESP_LOGI("power", "reset=%s  usb=%s", reason,
+          std::string last = reason;
+          if (esp_reset_reason() == ESP_RST_DEEPSLEEP) {
+            auto cause = esp_sleep_get_wakeup_cause();
+            last += (cause == ESP_SLEEP_WAKEUP_GPIO || cause == ESP_SLEEP_WAKEUP_EXT1)
+                        ? " (button)" : " (timer)";
+          }
+          id(last_reset).publish_state(last);
+          ESP_LOGI("power", "reset=%s  usb=%s", last.c_str(),
                    id(usb_powered) ? "YES" : "no");
 
       # With timeout! Without HA (router off, Wi-Fi gone) the script used to
@@ -727,6 +764,14 @@ script:
       - lambda: |-
           id(battery_sensor).update();
           id(soil_samples).clear();
+          // No cell and no USB host -> USB power supply (issue #42).
+          bool mains = !id(usb_powered) && !std::isnan(id(battery_raw).state) &&
+                       id(battery_raw).state < ${no_battery_below_v};
+          if (mains != id(mains_powered))
+            ESP_LOGI("power", "mains (no battery): %s", mains ? "YES" : "no");
+          id(mains_powered) = mains;
+          if (!id(usb_powered))
+            id(power_mode).publish_state(mains ? "${state_power_mains}" : "${state_power_battery}");
 
       # --- 5 soil readings, 20 ms apart, each averaging 16 hardware samples.
       #     A YAML loop instead of delay() inside a lambda: the old loop
@@ -915,7 +960,7 @@ script:
           }
 
   # Sleep or stay awake? The order is intentional:
-  # 1. USB              -> mains powered, battery irrelevant, always awake
+  # 1. USB host / power supply without cell -> battery irrelevant, always awake
   # 2. HA helper        -> disable_sleep_entity, explicit intent, latching
   # 3. button / HA      -> one-time, time limited window
   # 4. otherwise        -> sleep
@@ -923,11 +968,12 @@ script:
     then:
       - if:
           condition:
-            lambda: 'return id(usb_powered) || id(disable_sleep);'
+            lambda: 'return id(usb_powered) || id(mains_powered) || id(disable_sleep);'
           then:
             - lambda: |-
                 id(sleep_decision).publish_state(
-                    id(usb_powered) ? "${state_awake_usb}" : "${state_awake_switch}");
+                    id(usb_powered)   ? "${state_awake_usb}" :
+                    id(mains_powered) ? "${state_awake_mains}" : "${state_awake_switch}");
             # Awake: the 60 s interval measures next.
             - script.execute:
                 id: publish_next_measurement
