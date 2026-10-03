@@ -8,6 +8,13 @@ updates:
       interval: daily
     commit-message:
       prefix: "deps"
+    # Dependabot holds back every new release for 3 days by default (supply
+    # chain protection), even without a cooldown block. The project policy is
+    # "always test against the newest ESPHome" (CLAUDE.md), so ESPHome is
+    # exempt: a release is proposed on the next daily run (issue #43).
+    cooldown:
+      exclude:
+        - "esphome"
 
   - package-ecosystem: github-actions
     directory: /
