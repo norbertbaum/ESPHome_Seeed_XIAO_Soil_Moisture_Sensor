@@ -63,7 +63,23 @@ jobs:
           elif [ -n "$last" ] && git diff --quiet "$last" HEAD -- $FIRMWARE_PATHS; then
             reason="no firmware change since $last"
           else
-            echo "release=true" >> "$GITHUB_OUTPUT"
+            # GitVersion bumps the patch on every merge, even when the PR's
+            # commits say "+semver: none" (issue #52). Honour the marker here:
+            # no release if every non-merge commit that touches the firmware
+            # files since the last tag carries it.
+            unmarked=""
+            if [ -n "$last" ]; then
+              for c in $(git rev-list --no-merges "$last"..HEAD -- $FIRMWARE_PATHS); do
+                git log -1 --format=%B "$c" | grep -q '+semver: none' || unmarked="$unmarked $c"
+              done
+            else
+              unmarked="no previous tag"
+            fi
+            if [ -z "$unmarked" ]; then
+              reason="all firmware commits since $last are marked +semver: none"
+            else
+              echo "release=true" >> "$GITHUB_OUTPUT"
+            fi
           fi
           if [ -n "${reason:-}" ]; then
             echo "release=false" >> "$GITHUB_OUTPUT"

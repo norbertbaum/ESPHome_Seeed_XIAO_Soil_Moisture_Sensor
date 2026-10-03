@@ -65,6 +65,11 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
   push to main** (`workflow_run`, the weekly schedule run is ignored) and
   creates tag `vX.Y.Z` plus a GitHub release with generated notes
   (`gh release create --generate-notes`).
+- `+semver: none` must be in the **commit that changes the firmware files**. GitVersion
+  itself ignores it on merge commits and would still bump the patch (v2.2.1 came from a
+  comment-only PR, issue #52). The release workflow therefore skips the release when
+  every non-merge commit touching `FIRMWARE_PATHS` since the last tag carries the
+  marker.
 - Bumps: a merge to main = **patch** by default. In a commit message of the PR,
   `+semver: minor` = new feature or substitution (device files keep working),
   `+semver: major` = breaking (device files must change, and the release notes must say how),
