@@ -1,0 +1,26 @@
+# =============================================================================
+# Shared file for SEVERAL soil moisture sensors (ESPHome Device Builder).
+#
+# Put it at /config/esphome/common/soil-moisture.yaml. Files in sub-folders
+# are not listed as devices. Every device file includes it (see
+# ../soil-moisture-1.yaml).
+#
+# To update all sensors: change firmware_version below ONCE, then
+# "Update All" in the Device Builder. Sleeping sensors are queued and updated
+# when they wake up (or press their button to wake them now).
+# =============================================================================
+
+substitutions:
+  # Release for all sensors -- latest: see the Releases page of the repository.
+  # A single sensor can deviate by setting firmware_version in its own file.
+  firmware_version: vX.Y.Z
+
+packages:
+  soil_moisture:
+    url: https://github.com/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor
+    ref: ${firmware_version}
+    refresh: 1d
+    files:
+      # ${language} comes from the device file: en or de
+      - esphome/labels/.soil-moisture-labels-${language}.yaml
+      - esphome/.soil-moisture.base.yaml

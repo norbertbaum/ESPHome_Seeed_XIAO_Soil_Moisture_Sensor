@@ -168,6 +168,34 @@ ready yet … HOST_RESOLVED`), and the sensor sleeps almost all the time.
 5. Optional: put the controls back on the device page, see
    [Show the controls on the device page](#show-the-controls-on-the-device-page).
 
+### Several sensors: one central version
+
+With several sensors, put the version and the package definition into **one
+shared file** so an update is a single edit:
+
+1. Copy [`esphome/example-multi/common/soil-moisture.yaml`](esphome/example-multi/common/soil-moisture.yaml)
+   to `/config/esphome/common/soil-moisture.yaml`. Use for example the *Studio Code
+   Server* or *File editor* app. Sub-folders do not show up as devices.
+2. Reduce every device file to its own values plus the include, as in
+   [`esphome/example-multi/soil-moisture-1.yaml`](esphome/example-multi/soil-moisture-1.yaml):
+   ```yaml
+   substitutions:
+     name: soil-moisture-1
+     friendly_name: Soil Moisture 1
+     language: en
+     stay_awake_entity: input_boolean.soil_moisture_1_stay_awake
+     disable_sleep_entity: input_boolean.soil_moisture_1_disable_sleep
+     api_encryption_key: !secret soil_1_api_key
+   packages:
+     common: !include common/soil-moisture.yaml
+   ```
+3. **To update:** change `firmware_version` in the shared file, then click **Update All**
+   in the Device Builder. Sensors that are asleep are queued and updated when
+   they wake up. Press their button to do it right away.
+
+A single sensor can still run another release or branch by setting its own
+`firmware_version`, which overrides the shared one.
+
 ### OTA security
 
 - OTA uploads are **encrypted and authenticated with the device's API key**

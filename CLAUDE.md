@@ -90,6 +90,14 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
   ESPHome substitutes remote package `url`/`ref` with the device's
   substitutions (`_substitute_package_definition` in
   `esphome/components/packages/__init__.py`), which is what makes this work.
+- **Central version for several sensors** (issue #50,
+  `esphome/example-multi/`): the device file includes a local shared file
+  (`packages: common: !include common/soil-moisture.yaml`) that defines
+  `firmware_version` and the remote package. That remote package uses `${firmware_version}` in
+  `ref:` and `${language}` in a file path. Verified with ESPHome 2026.9.1 against
+  the real tag: substitutions from the shared file and the device file
+  both reach the nested remote package definition, and a device-level
+  `firmware_version` overrides the shared one.
 - `v1.0.0` was tagged by hand (annotated, on the merge of PR #1). Every later
   release comes from the workflow. GitVersion is pinned to `6.8.x` in the
   workflow. Dependabot does not bump it, so check it occasionally.
