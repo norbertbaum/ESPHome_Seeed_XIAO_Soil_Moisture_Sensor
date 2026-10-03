@@ -104,14 +104,24 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
   accepted an all-zeros test API key, 2026.9.0 rejects it, and CI caught it
   only after the push (issue #3).
 - `requirements.txt` pins the version so builds are reproducible. Dependabot
-  (`.github/dependabot.yml`) bumps the pin with a PR as soon as a new release
-  appears, and the CI run on that PR is the compatibility test. Merge it
+  (`.github/dependabot.yml`) bumps the pin with a PR on its next daily run
+  after a release, and the CI run on that PR is the compatibility test. Merge it
   after checking the release notes for breaking changes.
+- **Dependabot cooldown:** without any config, Dependabot holds back every new
+  version for **3 days** (supply-chain protection, logged as "Filtered out 1
+  versions due to cooldown"). ESPHome 2026.9.1 (released 2026-09-29) was
+  therefore not proposed for three days (issue #43). `esphome` is exempt via
+  `cooldown: exclude`. GitHub Actions keep the default cooldown.
+- To debug Dependabot: the job logs are in the Actions runs with event
+  `dynamic` (`gh api "repos/<owner>/<repo>/actions/runs?event=dynamic"`, then
+  `gh run view <id> --log`). Look for "Checking if … needs updating".
 - CI builds every language twice: with the `pinned` version and with the
   `latest` version from PyPI. A weekly scheduled run catches upstream breakage
   even when the repo does not change.
-- `esphome: min_version` in the base package = the pinned version (only that
-  one is tested). Raise it together with the pin.
+- `esphome: min_version` in the base package is the lowest version the
+  firmware *needs* (2026.9.0: OTA encryption, the all-zeros key check). Raise it
+  when a feature requires a newer ESPHome, not for every patch release.
+  Dependabot PRs only touch `requirements.txt`.
 - The Home Assistant ESPHome Device Builder add-on should run at least the
   pinned version. It was 2026.9.0 as of 2026-09-27.
 
