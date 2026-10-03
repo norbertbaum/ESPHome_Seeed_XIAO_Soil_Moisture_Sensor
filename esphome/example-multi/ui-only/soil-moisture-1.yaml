@@ -1,0 +1,19 @@
+# secrets.yaml: soil_firmware_version, soil_api_key -- see README "Several sensors".
+substitutions:
+  sensor_no: "1"
+  firmware_version: !secret soil_firmware_version
+  language: en
+  api_encryption_key: !secret soil_api_key
+  name: soil-moisture-${sensor_no}
+  friendly_name: Soil Moisture ${sensor_no}
+  stay_awake_entity: input_boolean.soil_moisture_${sensor_no}_stay_awake
+  disable_sleep_entity: input_boolean.soil_moisture_${sensor_no}_disable_sleep
+
+packages:
+  soil_moisture:
+    url: https://github.com/norbertbaum/ESPHome_Seeed_XIAO_Soil_Moisture_Sensor
+    ref: ${firmware_version}
+    refresh: 1d
+    files:
+      - esphome/labels/.soil-moisture-labels-${language}.yaml
+      - esphome/.soil-moisture.base.yaml

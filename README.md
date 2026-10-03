@@ -168,6 +168,59 @@ ready yet … HOST_RESOLVED`), and the sensor sleeps almost all the time.
 5. Optional: put the controls back on the device page, see
    [Show the controls on the device page](#show-the-controls-on-the-device-page).
 
+### Several sensors: one central version
+
+With several sensors you do not want to edit every device file for an update.
+There are two ways to keep the version (and everything else the sensors share)
+in **one place**. Both use a numbering scheme (`sensor_no`) so that a device file
+only says which sensor it is.
+
+| | **A: UI only** | **B: shared file** |
+|---|---|---|
+| Example | [`example-multi/ui-only/`](esphome/example-multi/ui-only/soil-moisture-1.yaml) | [`example-multi/shared-file/`](esphome/example-multi/shared-file/) |
+| Version lives in | `secrets.yaml` (`soil_firmware_version`) | the shared file |
+| Edited with | the Device Builder only ("Secrets", "Edit") | Studio Code Server / File editor app (once to create, then for changes) |
+| Device file | substitutions + package block, identical except `sensor_no` | `sensor_no` + one `!include` line |
+
+**A: UI only.** Add `soil_firmware_version: vX.Y.Z` (and, if all sensors share it,
+`soil_api_key`) under *Secrets* in the Device Builder, and use
+[`ui-only/soil-moisture-1.yaml`](esphome/example-multi/ui-only/soil-moisture-1.yaml) as
+every device file with its own `sensor_no`. To update, change the secret.
+
+**B: shared file.** Put
+[`shared-file/common/soil-moisture.yaml`](esphome/example-multi/shared-file/common/soil-moisture.yaml)
+next to your device files and reduce each device file to
+[`shared-file/soil-moisture-1.yaml`](esphome/example-multi/shared-file/soil-moisture-1.yaml):
+```yaml
+substitutions:
+  sensor_no: "3"
+  use_address: 192.168.8.93   # optional, otherwise <name>.local
+packages:
+  common: !include common/soil-moisture.yaml
+```
+The shared file holds the version, language, API key, names, helpers and the
+Wi-Fi address default. A device file can override any of them, for example to
+run a branch on one sensor or to set a fixed IP.
+
+> **Where to put the shared file:** the Device Builder treats every `*.yaml` in
+> `/config/esphome` as a device, **except files starting with a dot**. Use
+> `/config/esphome/common/soil-moisture.yaml` or
+> `/config/esphome/.soil-moisture-common.yaml`. A name like
+> `__template.yaml` shows up as a device and fails validation
+> (*"Hostnames can only be 31 characters long"*, because `sensor_no` is
+> missing), and *Update All* tries to build it. The Device Builder UI cannot
+> create such files, so use the *Studio Code Server* or *File editor* app.
+
+**Updating, both variants:** change the version, then click **Install** on each
+sensor. The Device Builder only notices edits to a *device file itself* (it
+re-checks a device when that file's modification time changes). It does not see
+edits to included files or to `secrets.yaml`, so the sensors are not marked as
+changed and *Update All* skips them. Sensors that are asleep are queued and
+updated when they wake up. Press their button to do it right away.
+
+Wi-Fi credentials are already part of the base package (`!secret wifi_ssid` /
+`wifi_password`), so device files only need `use_address` if mDNS does not work.
+
 ### OTA security
 
 - OTA uploads are **encrypted and authenticated with the device's API key**

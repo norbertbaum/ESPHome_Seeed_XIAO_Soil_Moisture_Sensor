@@ -1,0 +1,7 @@
+substitutions:
+  sensor_no: "1"
+  # Optional overrides, e.g.:
+  # use_address: 192.168.1.51
+
+packages:
+  common: !include common/soil-moisture.yaml

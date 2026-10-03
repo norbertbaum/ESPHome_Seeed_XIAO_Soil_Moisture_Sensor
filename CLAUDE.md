@@ -54,6 +54,9 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
 - Code comments, commit messages, PRs and docs are in **English**. Only the
   issues and the German label file are German.
 - Commit messages: imperative summary line, body explains why.
+- **Keep comments short.** Comment only what is not obvious from the code
+  (hardware traps, the reasons behind odd values). Do not restate the README in example
+  files. A one-line pointer to the README is enough.
 - When behaviour or a default changes, update the README tables and this
   file in the same PR. Do **not** hand-edit versions or create tags: releases
   are automatic (see "Releases").
@@ -95,6 +98,22 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
   ESPHome substitutes remote package `url`/`ref` with the device's
   substitutions (`_substitute_package_definition` in
   `esphome/components/packages/__init__.py`), which is what makes this work.
+- **Central version for several sensors** (issue #50,
+  `esphome/example-multi/`). There are two variants. *UI only*: `firmware_version: !secret
+  soil_firmware_version` in every device file. *Shared file*: a local include,
+  with a numbering scheme from `sensor_no`. Verified with ESPHome 2026.9.1 against the
+  real tag: substitutions from the shared file, the device file and
+  `secrets.yaml` all reach the nested remote package `ref:` and file path. A
+  device-level value overrides the shared one, and nested substitutions
+  (`name: soil-moisture-${sensor_no}`, `use_address: ${name}.local`) resolve.
+- **Device Builder limits** (from `esphome/device-builder`, `scan_change.py` and
+  `compute_has_pending_changes`): a device is re-checked (`--only-generate`) only
+  when its own YAML's mtime, size or inode changes. "Pending changes" compares
+  the last build's `build_info.json` hash with the hash the device announces over mDNS.
+  Edits to included files or `secrets.yaml` therefore do **not** mark devices as
+  changed. Update with *Install* per device. Every `*.yaml` not starting with
+  `.` is listed as a device (`esphome.util.filter_yaml_files`), so a shared file
+  must live in a sub-folder or start with a dot.
 - `v1.0.0` was tagged by hand (annotated, on the merge of PR #1). Every later
   release comes from the workflow. GitVersion is pinned to `6.8.x` in the
   workflow. Dependabot does not bump it, so check it occasionally.
