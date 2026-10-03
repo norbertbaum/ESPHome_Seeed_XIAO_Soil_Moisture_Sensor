@@ -91,13 +91,21 @@ sync: README = how to use, CLAUDE.md = why and how to maintain.
   substitutions (`_substitute_package_definition` in
   `esphome/components/packages/__init__.py`), which is what makes this work.
 - **Central version for several sensors** (issue #50,
-  `esphome/example-multi/`): the device file includes a local shared file
-  (`packages: common: !include common/soil-moisture.yaml`) that defines
-  `firmware_version` and the remote package. That remote package uses `${firmware_version}` in
-  `ref:` and `${language}` in a file path. Verified with ESPHome 2026.9.1 against
-  the real tag: substitutions from the shared file and the device file
-  both reach the nested remote package definition, and a device-level
-  `firmware_version` overrides the shared one.
+  `esphome/example-multi/`). There are two variants. *UI only*: `firmware_version: !secret
+  soil_firmware_version` in every device file. *Shared file*: a local include,
+  with a numbering scheme from `sensor_no`. Verified with ESPHome 2026.9.1 against the
+  real tag: substitutions from the shared file, the device file and
+  `secrets.yaml` all reach the nested remote package `ref:` and file path. A
+  device-level value overrides the shared one, and nested substitutions
+  (`name: soil-moisture-${sensor_no}`, `use_address: ${name}.local`) resolve.
+- **Device Builder limits** (from `esphome/device-builder`, `scan_change.py` and
+  `compute_has_pending_changes`): a device is re-checked (`--only-generate`) only
+  when its own YAML's mtime, size or inode changes. "Pending changes" compares
+  the last build's `build_info.json` hash with the hash the device announces over mDNS.
+  Edits to included files or `secrets.yaml` therefore do **not** mark devices as
+  changed. Update with *Install* per device. Every `*.yaml` not starting with
+  `.` is listed as a device (`esphome.util.filter_yaml_files`), so a shared file
+  must live in a sub-folder or start with a dot.
 - `v1.0.0` was tagged by hand (annotated, on the merge of PR #1). Every later
   release comes from the workflow. GitVersion is pinned to `6.8.x` in the
   workflow. Dependabot does not bump it, so check it occasionally.
