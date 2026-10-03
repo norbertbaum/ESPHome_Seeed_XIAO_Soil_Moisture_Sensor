@@ -268,6 +268,19 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 
 ## USB detection
 
+- **Mains without a cell** (issue #42): a USB power supply sends no SOF, so it
+  looks like battery operation. The XIAO ESP32-C6 has no VBUS sense pin. With
+  no cell, though, the battery ADC reads ~0 V (unit 4 read 0.006 V), and that
+  can only mean external power. In every measurement, `mains_powered` = no USB host
+  and `battery_raw < no_battery_below_v` (0.5 V). It then behaves like USB:
+  no sleep, measuring every 60 s, *Power Mode* "Mains (no battery)", *Battery %*
+  NAN. A power supply **with** a cell cannot be told apart from the battery
+  itself, so the HA helper *Disable Deep Sleep* covers that case.
+- *Last Reset* (issue #45) publishes `esp_reset_reason()` on every boot, and
+  after deep sleep the wake-up cause too (`DEEPSLEEP (timer|button)`). This was added after unit 4
+  restarted unexplained during a button wake window. Look for `PANIC`, `*_WDT` and
+  `BROWNOUT` in its history.
+
 - `usb_serial_jtag_is_connected()` counts SOF packets, which only a real USB host sends.
   A charger without data lines is correctly detected as "no USB".
 - **ESP-IDF initialises the status to `true`** ("always assume connected until

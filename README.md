@@ -222,6 +222,7 @@ Override any of these in the device's `substitutions:`.
 | `min_span` | `0.05` | Learned span (V) needed before a percentage is reported |
 | `decay_frac_per_day` | `0.02` | Fraction of the span both limits move inwards per day |
 | `confirm_tol` | `0.02` | Tolerance (V) for confirming a new extreme |
+| `no_battery_below_v` | `0.50` | Below this cell voltage (V) no cell is inserted → mains powered, never sleeps |
 | `usb_settle_ms` | `500` | Wait before evaluating USB detection. **Do not remove** |
 
 Anything else can be added or overridden in the device file as usual, for
@@ -255,6 +256,7 @@ The label file sets both the entity names and the status texts (*Dry* /
 | Cal Wet (learned) | Kalibrierung feucht (gelernt) | diagnostic | learned wet limit (V) |
 | Cal Span | Kalibrierung Hub | diagnostic | dry − wet (V) |
 | Next Sleep | Nächste Messung in | diagnostic | chosen sleep duration (min) |
+| Last Reset | Letzter Neustart | diagnostic | reset reason of the current boot, e.g. `DEEPSLEEP (timer)`, `DEEPSLEEP (button)`, `PANIC`, `BROWNOUT` |
 | WiFi Signal | WLAN-Signal | diagnostic | Wi-Fi reception in dBm at the last measurement (see below) |
 | Next Measurement At | Nächste Messung um | diagnostic | timestamp of the next measurement, shown by HA as "in 59 minutes" |
 | Power Mode | Stromversorgung | diagnostic | USB / battery |
@@ -278,13 +280,18 @@ The device decides on **every boot** how to behave. The rules are checked in thi
 | Detected | Behaviour |
 |---|---|
 | USB host connected | No deep sleep. Re-measures every 60 s, logs and OTA available. |
+| USB power supply, **no cell** | Same as USB host: no deep sleep, re-measures every 60 s. *Power Mode* shows *Mains (no battery)*, *Battery %* is unknown. |
 | `disable_sleep_entity` helper on in HA | Stays awake on battery too, from the next wake-up until switched off. |
 | Push button pressed | Measures, blinks the status, then a **wake window** of `button_awake_s`. |
 | Stay-awake helper on in HA | **One-time wake window** of `wake_budget_min` on the next wake-up. |
 | Otherwise | Measure, then deep sleep for a moisture-dependent duration. |
 
-A charger or power bank without data lines counts as "no USB". USB detection
-looks for USB SOF packets, which only a real host sends.
+USB detection looks for USB SOF packets, which only a real host (PC) sends. A
+USB power supply or power bank sends none. Without a cell (battery voltage below
+`no_battery_below_v`, default 0.5 V) the sensor still knows it is externally powered
+and stays awake. **With a cell and a power supply** (for example for Wi-Fi debugging),
+the two cases cannot be told apart, because the cell voltage is normal. Switch
+*Disable Deep Sleep* (the HA helper) on for that time, and switch it off again afterwards.
 
 ### Dynamic sleep
 

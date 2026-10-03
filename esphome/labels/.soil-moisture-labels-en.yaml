@@ -25,6 +25,7 @@ substitutions:
   label_firmware: Firmware
   label_esphome_version: ESPHome Version
   label_wifi_signal: WiFi Signal
+  label_last_reset: Last Reset
 
   # ---- text sensor states ----
   state_dry: Dry
@@ -34,7 +35,9 @@ substitutions:
   state_calibrating: Calibrating
   state_power_usb: USB (debug, no sleep)
   state_power_battery: Battery (deep sleep)
+  state_power_mains: Mains (no battery)
   state_awake_usb: "awake: USB"
+  state_awake_mains: "awake: mains"
   state_awake_switch: "awake: HA switch"
   state_awake_request: "awake: HA request"
   state_awake_button: "awake: button"
