@@ -248,10 +248,24 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 
 ## Hardware facts (verified on the device)
 
-- The probe needs its **analog frontend**: GPIO21 200 kHz PWM at **68 % duty**
-  (operating point of the Seeed reference design, not a brightness), GPIO14 ON
-  (power), GPIO3 OFF. Without it GPIO1 reads ~0.002 V. **GPIO14 also powers the
-  battery measurement**. "Battery 0 %" and "soil 0 V" had the same root cause.
+- The probe needs its **200 kHz excitation**: GPIO21 (D3) PWM at **68 % duty**
+  (operating point of the Seeed reference design, not a brightness), via 10 kΩ to
+  the probe, then rectified (1N4148, 1 MΩ, 4.7 µF) to GPIO1 (A1). Without it GPIO1
+  reads ~0.002 V.
+- **GPIO3/GPIO14 are the XIAO ESP32-C6's RF switch, not part of this board**
+  (issue #48, from the [board schematic](https://files.seeedstudio.com/wiki/XIAO_Soil_Moisture_Sensor/res/SCH.pdf)
+  and the [XIAO ESP32-C6 wiki](https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/)):
+  GPIO3 LOW enables the RF switch, and GPIO14 HIGH selects the **external U.FL
+  antenna** (LOW = built-in ceramic). The owner's sensors have an external antenna
+  fitted, so HIGH is correct. Earlier versions of this file called them "analog
+  frontend power" and claimed that "GPIO14 powers the battery measurement". Both were wrong. The
+  battery is VBAT → 100 kΩ → GPIO0 (A0) with no enable. The early "battery 0 V"
+  observation was fixed together with the PWM init and has no explanation in
+  the schematic.
+- **Power path:** AA → TPS61021A boost → 3V3. USB-C 5 V (`VDD_5V`) drives Q4,
+  which pulls the boost converter's EN low, so USB-C has priority and the cell is not loaded.
+  `VDD_5V` reaches no GPIO, so a USB power supply is invisible to the firmware (see
+  "Mains without a cell"). Hardware modifications are not an option for the owner.
 - `sensor_hw_init` must run after **every** boot, including deep-sleep
   wake-ups, which lose GPIO/LEDC state. `measure_and_sleep` also calls it,
   because the 60 s timer and the button trigger it too.
@@ -432,7 +446,7 @@ A clean compile takes about 2 minutes. Reference sizes are in the
 All of these were verified against the ESPHome 2026.6.4 source or on the device. The original
 **compiles cleanly**. These are all runtime bugs.
 
-1. The analog frontend (GPIO21/14/3) was missing. The ADC read ~0.002 V, and the
+1. The probe excitation (GPIO21 PWM) and the antenna setup (GPIO3/14) were missing. The ADC read ~0.002 V, and the
    firmware turned that into "100 % / Normal Moisture".
 2. The status LEDs never turned on: `id(x).turn_on()` only builds a `LightCall`.
    It needs `.perform()`.

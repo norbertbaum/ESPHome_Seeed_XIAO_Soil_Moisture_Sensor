@@ -420,11 +420,21 @@ compress the scale to a few percent. That is why they are not used.
 | GPIO2 | Push button (pull-up, inverted) |
 | GPIO18 / 19 / 20 | LED yellow / green / red |
 | **GPIO21** | **200 kHz PWM @ 68 %: excitation of the capacitive probe** |
-| **GPIO14** | **Power enable of the analog frontend (must be ON)** |
-| **GPIO3** | **Analog frontend switch (must be OFF)** |
+| GPIO3 | XIAO RF switch: LOW = enabled |
+| GPIO14 | XIAO antenna select: HIGH = external U.FL antenna (fitted), LOW = built-in |
 
-Without GPIO21/14/3 the probe ADC reads a constant ~0.002 V and the battery ADC reads 0 V.
-GPIO14 also powers the battery measurement.
+GPIO3 and GPIO14 belong to the XIAO ESP32-C6 module, not to the sensor board
+([board schematic](https://files.seeedstudio.com/wiki/XIAO_Soil_Moisture_Sensor/res/SCH.pdf),
+[XIAO ESP32-C6 wiki](https://wiki.seeedstudio.com/xiao_esp32c6_getting_started/)).
+Without the GPIO21 excitation the probe ADC reads a constant ~0.002 V.
+
+**Power path (from the schematic):** the AA cell feeds a TPS61021A boost
+converter that makes the 3.3 V. The 5 V from USB-C switch the boost converter off
+through a transistor (Q4 pulls its EN pin low). So **USB-C has priority** and the cell
+is not loaded while USB-C is connected. The 5 V are not wired to any GPIO, so
+the firmware cannot see a USB power supply. It can only see a USB *host* (data) or a
+missing cell (see [Operating modes](#operating-modes)). The battery input is
+VBAT through 100 kΩ to GPIO0, with no enable pin.
 
 > A battery voltage measured while on USB is an open-circuit voltage. Under
 > Wi-Fi load on battery it will read lower.
